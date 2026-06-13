@@ -254,6 +254,12 @@ function verwijderInvoer(id){
   toonLaatsteInvoer();
 }
 
+function kleurCel(val){
+  if(val > 0) return 'background:#c8e6c9;';
+  if(val < 0) return 'background:#ffcdd2;';
+  return '';
+}
+
 // ---------- OVERZICHT ----------
 function toonOverzicht(){
   const klant = document.getElementById('o-klant').value;
@@ -282,7 +288,10 @@ function toonOverzicht(){
   rows.forEach(r=>{
     tcc+=r.cc; tpl+=r.platen; top+=r.opzet;
     tbody.innerHTML += `<tr><td>${fmtDatum(r.datum)}</td><td>${r.week}</td><td>${r.bon}</td>
-      <td>${r.cc}</td><td>${r.platen}</td><td>${r.opzet}</td><td>${r.opmerking||''}</td></tr>`;
+      <td style="${kleurCel(r.cc)}">${r.cc}</td>
+      <td style="${kleurCel(r.platen)}">${r.platen}</td>
+      <td style="${kleurCel(r.opzet)}">${r.opzet}</td>
+      <td>${r.opmerking||''}</td></tr>`;
   });
   document.getElementById('o-totcc').textContent='CC: '+tcc;
   document.getElementById('o-totplaten').textContent='Platen: '+tpl;
