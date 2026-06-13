@@ -12,12 +12,12 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
   :root, [data-theme="light"]{
-    --bg:#f5f6f8; --card:#ffffff; --border:#dde1e6;
+    --bg:#f5f6f8; --card:#ffffff; --border:#dde1e6; --input-bg:#f0f1f3;
     --text:#1a1d24; --muted:#6b7280; --accent:#4f8cff;
     --green:#4caf50; --red:#e57373;
   }
   [data-theme="dark"]{
-    --bg:#0f1115; --card:#1a1d24; --border:#2a2e37;
+    --bg:#0f1115; --card:#1a1d24; --border:#2a2e37; --input-bg:#11141a;
     --text:#e8eaed; --muted:#9aa0a6; --accent:#4f8cff;
     --green:#4caf50; --red:#e57373;
   }
@@ -31,7 +31,7 @@
   .content{padding:16px; max-width:700px; margin:0 auto;}
   .card{background:var(--card); border:1px solid var(--border); border-radius:10px; padding:14px; margin-bottom:12px;}
   label{display:block; font-size:12px; color:var(--muted); margin:8px 0 4px;}
-  input, select, textarea{width:100%; padding:9px; border-radius:8px; border:1px solid var(--border); background:#11141a; color:var(--text); font-size:14px;}
+  input, select, textarea{width:100%; padding:9px; border-radius:8px; border:1px solid var(--border); background:var(--input-bg); color:var(--text); font-size:14px;}
   button{padding:10px 14px; border-radius:8px; border:none; background:var(--accent); color:#fff; font-size:14px; cursor:pointer; margin-top:4px;}
   button.secondary{background:#2a2e37;}
   button.danger{background:var(--red);}
@@ -72,7 +72,7 @@
     <input type="date" id="i-datum">
 
     <label>Bonnummer</label>
-    <input type="text" id="i-bon" readonly style="background:var(--border); font-weight:600;">
+    <input type="text" id="i-bon" readonly style="background:var(--input-bg); font-weight:600; border-color:var(--accent);">
 
     <div class="row">
       <div>
