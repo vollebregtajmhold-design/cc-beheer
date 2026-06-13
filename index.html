@@ -77,7 +77,7 @@
     <input type="date" id="i-datum">
 
     <label>Bonnummer</label>
-    <input type="text" id="i-bon" readonly style="background:var(--input-bg); font-weight:600; border-color:var(--accent);">
+    <input type="text" id="i-bon" style="background:var(--input-bg); font-weight:600; border-color:var(--accent);" placeholder="optioneel">
 
     <div class="row">
       <div>
@@ -311,10 +311,10 @@ function printBon(id){
   doc.setFontSize(8); doc.setFont(undefined,'normal');
   doc.text('ID:', marge, y);
   doc.setFont(undefined,'bold');
-  doc.text(String(r.id), marge+8, y);
+  doc.text(String(r.id).slice(-5), marge+8, y);
   doc.setFont(undefined,'normal');
   doc.text(fmtDatum(r.datum), pageW/2, y, {align:'center'});
-  doc.text('Bon: ' + (r.bon||''), pageW-marge, y, {align:'right'});
+  if(r.bon) doc.text('Bon: ' + r.bon, pageW-marge, y, {align:'right'});
   y += 3;
   doc.line(marge, y, pageW-marge, y);
 
@@ -335,24 +335,25 @@ function printBon(id){
   doc.line(marge, y, pageW-marge, y);
 
   // ---- Tabel CC / Platen / Opzetstuk ----
-  y += 6;
+  y += 4;
   const c2 = marge + breedte*0.46;
   const c3 = marge + breedte*0.72;
   const c4 = marge + breedte*0.96;
-  doc.setFont(undefined,'bold');
+  doc.setFillColor(235,235,235);
+  doc.rect(marge, y, breedte, 16, 'F');
+  y += 4;
+  doc.setFont(undefined,'bold'); doc.setFontSize(9.5);
   doc.text('cc', c2, y, {align:'center'});
   doc.text('platen', c3, y, {align:'center'});
   doc.text('opzetstuk', c4, y, {align:'center'});
-  y += 3;
-  doc.line(marge, y, pageW-marge, y);
-  y += 6;
-  doc.setFontSize(10);
-  doc.text('Aantallen:', marge, y);
+  y += 8;
+  doc.setFontSize(12);
+  doc.text('Aantallen:', marge+3, y);
   doc.text(String(r.cc), c2, y, {align:'center'});
   doc.text(String(r.platen), c3, y, {align:'center'});
   doc.text(String(r.opzet), c4, y, {align:'center'});
   doc.setFontSize(8); doc.setFont(undefined,'normal');
-  y += 3;
+  y += 4;
   doc.line(marge, y, pageW-marge, y);
 
   // ---- Opmerking (alleen tonen als ingevuld) ----
