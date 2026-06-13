@@ -10,6 +10,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="CC Beheer">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
 <style>
   :root, [data-theme="light"]{
     --bg:#f5f6f8; --card:#ffffff; --border:#dde1e6; --input-bg:#f0f1f3;
@@ -44,6 +45,10 @@
   .row > *{flex:1;}
   table{width:100%; border-collapse:collapse; font-size:13px; margin-top:8px;}
   th, td{padding:6px 4px; border-bottom:1px solid var(--border); text-align:left;}
+  #o-tabel{table-layout:fixed;}
+  #o-tabel th, #o-tabel td{text-align:center; overflow:hidden; text-overflow:ellipsis;}
+  #o-tabel th:nth-child(1), #o-tabel td:nth-child(1),
+  #o-tabel th:nth-child(7), #o-tabel td:nth-child(7){text-align:left;}
   th{color:var(--muted); font-weight:500;}
   .totals{display:flex; justify-content:space-between; font-weight:600; margin-top:8px; padding-top:8px; border-top:1px solid var(--border);}
   .hidden{display:none;}
@@ -104,8 +109,10 @@
     <div id="i-status" class="small"></div>
 
     <hr style="border-color:var(--border); margin:14px 0;">
-    <div class="small">Laatste invoer</div>
-    <table id="i-laatste"><tbody></tbody></table>
+    <div class="small">Alle invoer (nieuwste eerst)</div>
+    <div style="max-height:300px; overflow-y:auto;">
+      <table id="i-laatste"><tbody></tbody></table>
+    </div>
   </div>
 
   <!-- OVERZICHT -->
@@ -132,9 +139,11 @@
       <button onclick="exportPdf()">📄 PDF</button>
       <button class="secondary" onclick="mailOverzicht()">✉️ Mail</button>
     </div>
+    <div id="o-status" class="small"></div>
 
     <hr style="border-color:var(--border); margin:14px 0;">
     <button class="secondary" onclick="exportTotaalPdf()">📊 Totaaloverzicht alle klanten</button>
+    <button class="secondary" onclick="exportCsv()">📥 Download Excel (CSV)</button>
 
     <hr style="border-color:var(--border); margin:14px 0;">
     <div class="small" style="font-weight:600; margin-bottom:4px;">Verzendlijst (laatste mails)</div>
@@ -159,7 +168,32 @@
     <div id="k-status" class="small"></div>
 
     <hr style="border-color:var(--border); margin:14px 0;">
+    <div class="small" style="font-weight:600; margin-bottom:6px;">✉️ E-mail instellingen (EmailJS)</div>
+    <div class="small" style="margin-bottom:8px;">
+      Maak gratis een account op emailjs.com, koppel je e-mailadres en vul hier de gegevens in om direct vanuit de app te mailen (met PDF-bijlage).
+    </div>
+    <label>Service ID</label>
+    <input type="text" id="cfg-service">
+    <label>Template ID</label>
+    <input type="text" id="cfg-template">
+    <label>Public Key</label>
+    <input type="text" id="cfg-publickey">
+    <button class="secondary" onclick="opslaanEmailConfig()">💾 Instellingen opslaan</button>
+    <div id="cfg-status" class="small"></div>
+
+    <hr style="border-color:var(--border); margin:14px 0;">
     <div id="k-lijst"></div>
+
+    <hr style="border-color:var(--border); margin:14px 0;">
+    <div class="small" style="font-weight:600; margin-bottom:6px;">📱 Synchroniseren tussen apparaten</div>
+    <div class="small" style="margin-bottom:8px;">
+      Download een backup-bestand en open dit op je andere telefoon/computer om dezelfde gegevens te laden.
+    </div>
+    <div class="row">
+      <button class="secondary" onclick="exportBackup()">⬇️ Backup downloaden</button>
+      <button class="secondary" onclick="document.getElementById('k-import').click()">⬆️ Backup laden</button>
+    </div>
+    <input type="file" id="k-import" accept=".json" style="display:none;" onchange="importBackup(event)">
   </div>
 
 </div>
@@ -182,17 +216,11 @@ function vulTransporteur(){
   document.getElementById('i-transporteur').value = (k && k.transporteur) ? k.transporteur : '';
 }
 
-// ---------- BONNUMMER ----------
-function volgendBonnummer(){
-  let max = 1000;
-  invoer.forEach(r=>{
-    const n = Number(r.bon);
-    if(!isNaN(n) && n > max) max = n;
-  });
+// ---------- ID-NUMMER (start bij 1) ----------
+function volgendInvoerId(){
+  let max = 0;
+  invoer.forEach(r=>{ if(r.id > max) max = r.id; });
   return max + 1;
-}
-function zetBonnummer(){
-  document.getElementById('i-bon').value = volgendBonnummer();
 }
 
 // ---------- DATA ----------
@@ -210,7 +238,7 @@ document.querySelectorAll('.tab').forEach(t=>{
     t.classList.add('active');
     document.getElementById('tab-'+t.dataset.tab).classList.remove('hidden');
     if(t.dataset.tab==='overzicht'){ toonOverzicht(); toonVerzendlijst(); }
-    if(t.dataset.tab==='klanten') toonKlanten();
+    if(t.dataset.tab==='klanten'){ toonKlanten(); vulEmailConfigVelden(); }
     if(t.dataset.tab==='invoer') toonLaatsteInvoer();
   };
 });
@@ -224,7 +252,8 @@ function getISOWeek(date){
   return Math.ceil((((d-yearStart)/86400000)+1)/7);
 }
 function vulKlantSelects(){
-  const opts = klanten.map(k=>`<option value="${k.naam}">${k.naam}</option>`).join('');
+  const gesorteerd = [...klanten].sort((a,b)=>a.naam.localeCompare(b.naam,'nl'));
+  const opts = gesorteerd.map(k=>`<option value="${k.naam}">${k.naam}</option>`).join('');
   document.getElementById('i-klant').innerHTML = '<option value="">-- kies klant --</option>'+opts;
   document.getElementById('o-klant').innerHTML = '<option value="">-- kies klant --</option>'+opts;
 }
@@ -263,7 +292,7 @@ function opslaanInvoer(){
     document.querySelector('#tab-invoer button').textContent = '✅ Opslaan';
     document.getElementById('i-status').textContent = '✅ Wijziging opgeslagen voor ' + klant;
   } else {
-    veld.id = Date.now();
+    veld.id = volgendInvoerId();
     invoer.push(veld);
     document.getElementById('i-status').textContent = '✅ Opgeslagen voor ' + klant;
   }
@@ -274,7 +303,7 @@ function opslaanInvoer(){
   document.getElementById('i-opzet').value=0;
   document.getElementById('i-opmerking').value='';
   document.getElementById('i-transporteur').value='';
-  zetBonnummer();
+  document.getElementById('i-bon').value='';
   toonLaatsteInvoer();
 }
 
@@ -299,19 +328,19 @@ function printBon(id){
   if(!r) return;
   const k = klanten.find(x=>x.naam===r.klant) || {};
   const { jsPDF } = window.jspdf;
-  const doc = new jsPDF({ format: 'a5', unit: 'mm' });
+  const doc = new jsPDF({ format: 'a4', unit: 'mm' });
   const pageW = 148, marge = 8, breedte = pageW - marge*2;
 
   // ---- Logo + Kopregel ----
-  doc.addImage(LOGO_BASE64, 'JPEG', marge, 6, 28, 16.3);
-  doc.setFontSize(17);
+  doc.addImage(LOGO_BASE64, 'JPEG', marge, 4, 26, 15.1);
+  doc.setFontSize(16);
   doc.setFont(undefined,'bold');
-  doc.text('Vollebregt Cyclamen', pageW/2 + 12, 15, {align:'center'});
+  doc.text('Vollebregt Cyclamen', pageW/2 + 12, 12, {align:'center'});
   doc.setLineWidth(0.5);
-  doc.line(marge, 26, pageW-marge, 26);
+  doc.line(marge, 22, pageW-marge, 22);
 
   // ---- ID / Datum / Bon ----
-  let y = 32;
+  let y = 28;
   doc.setFontSize(8); doc.setFont(undefined,'normal');
   doc.text('ID:', marge, y);
   doc.setFont(undefined,'bold');
@@ -323,34 +352,34 @@ function printBon(id){
   doc.line(marge, y, pageW-marge, y);
 
   // ---- Afleveradres ----
-  y += 5;
+  y += 4;
   doc.text('Afleveradres:', marge, y);
-  y += 5;
+  y += 4.5;
   doc.setFontSize(11); doc.setFont(undefined,'bold');
   doc.text(r.klant, marge, y);
   doc.setFontSize(8); doc.setFont(undefined,'normal');
   doc.text('Transporteur: ' + (r.transporteur||'-'), pageW/2 + 8, y);
-  y += 5;
+  y += 4.5;
   doc.text(k.adres||'', marge, y);
   y += 4;
   doc.text(k.woonplaats||'', marge, y);
   doc.text('Tel: ' + (k.telefoon||''), pageW/2 + 8, y);
-  y += 4;
+  y += 3.5;
   doc.line(marge, y, pageW-marge, y);
 
   // ---- Tabel CC / Platen / Opzetstuk ----
-  y += 4;
+  y += 3;
   const c2 = marge + breedte*0.46;
   const c3 = marge + breedte*0.72;
   const c4 = marge + breedte*0.88;
   doc.setFillColor(235,235,235);
-  doc.rect(marge, y, breedte, 16, 'F');
-  y += 4;
+  doc.rect(marge, y, breedte, 15, 'F');
+  y += 3.5;
   doc.setFont(undefined,'bold'); doc.setFontSize(9.5);
   doc.text('cc', c2, y, {align:'center'});
   doc.text('platen', c3, y, {align:'center'});
   doc.text('opzetstuk', c4, y, {align:'center'});
-  y += 8;
+  y += 7.5;
   doc.setFontSize(12);
   doc.text('Aantallen:', marge+3, y);
   doc.text(String(r.cc), c2, y, {align:'center'});
@@ -362,12 +391,12 @@ function printBon(id){
 
   // ---- Opmerking (alleen tonen als ingevuld) ----
   if(r.opmerking){
-    y += 5;
+    y += 4;
     const opmRegels = doc.splitTextToSize(r.opmerking, breedte);
     doc.text(opmRegels, marge, y);
     y += (opmRegels.length - 1) * 4;
   }
-  y += 5;
+  y += 4;
   doc.line(marge, y, pageW-marge, y);
 
   // ---- Actueel Nieuw Saldo ----
@@ -375,7 +404,7 @@ function printBon(id){
   let saldoCC=0, saldoPL=0, saldoOP=0;
   rows.forEach(x=>{ saldoCC+=x.cc; saldoPL+=x.platen; saldoOP+=x.opzet; });
 
-  y += 5;
+  y += 4;
   doc.setFont(undefined,'bold');
   doc.text('Actueel Nieuw Saldo', marge, y);
   doc.setFont(undefined,'normal');
@@ -416,9 +445,9 @@ function printBon(id){
 }
 
 function toonLaatsteInvoer(){
-  const laatste = invoer.slice(-5).reverse();
+  const alle = [...invoer].reverse();
   const tbody = document.querySelector('#i-laatste tbody');
-  tbody.innerHTML = laatste.map(r=>
+  tbody.innerHTML = alle.map(r=>
     `<tr><td>${fmtDatum(r.datum)}</td><td>${r.klant}</td><td>${r.cc}/${r.platen}/${r.opzet}</td>
      <td style="white-space:nowrap;">
        <button class="secondary" style="padding:2px 6px;font-size:11px;" onclick="bewerkInvoer(${r.id})">✏️</button>
@@ -481,6 +510,11 @@ function toonOverzicht(){
 function exportPdf(){
   const klant = document.getElementById('o-klant').value;
   if(!klant){ alert('Kies eerst een klant.'); return; }
+  const doc = genereerOverzichtPdf(klant);
+  doc.save('Fustoverzicht_' + klant + '.pdf');
+}
+
+function genereerOverzichtPdf(klant){
   const k = klanten.find(x=>x.naam===klant) || {};
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF({ unit:'mm', format:'a4' });
@@ -551,7 +585,7 @@ function exportPdf(){
   doc.text('cc-karren', xpos[3]+kol[3].w/2, y+6, {align:'center'});
   doc.text('platen', xpos[4]+kol[4].w/2, y+6, {align:'center'});
   doc.text('opzetstukken', xpos[5]+kol[5].w/2, y+6, {align:'center'});
-  doc.text('Bon', xpos[6]+2, y+6);
+  doc.text('Bon', xpos[6]+kol[6].w/2, y+6, {align:'center'});
   doc.text('Opmerking', xpos[7]+2, y+6);
   y += 9;
 
@@ -584,12 +618,28 @@ function exportPdf(){
     doc.text(r.cc ? String(r.cc) : '', xpos[3]+kol[3].w/2, y+4, {align:'center'});
     doc.text(r.platen ? String(r.platen) : '', xpos[4]+kol[4].w/2, y+4, {align:'center'});
     doc.text(r.opzet ? String(r.opzet) : '', xpos[5]+kol[5].w/2, y+4, {align:'center'});
-    doc.text(r.bon ? String(r.bon) : '', xpos[6], y+4);
+    doc.text(r.bon ? String(r.bon) : '', xpos[6]+kol[6].w/2, y+4, {align:'center'});
     doc.text(r.opmerking || (r.transporteur||''), xpos[7], y+4);
     y += rh;
   });
 
-  doc.save('Fustoverzicht_' + klant + '.pdf');
+  return doc;
+}
+
+// ---------- CSV / EXCEL EXPORT ----------
+function exportCsv(){
+  const kop = ['ID','Datum','Week','Klant','Bon','Transporteur','CC','Platen','Opzetstukken','Opmerking'];
+  const regels = [kop.join(';')];
+  [...invoer].sort((a,b)=>a.id-b.id).forEach(r=>{
+    const veld = [r.id, fmtDatum(r.datum), r.week, r.klant, r.bon||'', r.transporteur||'', r.cc, r.platen, r.opzet, (r.opmerking||'').replace(/;/g,',')];
+    regels.push(veld.join(';'));
+  });
+  const csv = '\uFEFF' + regels.join('\r\n');
+  const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'CC_Invoer_' + new Date().toISOString().slice(0,10) + '.csv';
+  a.click();
 }
 
 // ---------- TOTAALOVERZICHT ALLE KLANTEN ----------
@@ -626,7 +676,7 @@ function exportTotaalPdf(){
   doc.text('Opzetstukken', xpos[3]+kol[3].w/2, y+6, {align:'center'});
   y += 9;
 
-  const totalen = klanten.map(k=>{
+  const totalen = [...klanten].sort((a,b)=>a.naam.localeCompare(b.naam,'nl')).map(k=>{
     let cc=0, pl=0, op=0;
     invoer.filter(r=>r.klant===k.naam).forEach(r=>{ cc+=r.cc; pl+=r.platen; op+=r.opzet; });
     return { naam:k.naam, woonplaats:k.woonplaats, cc, pl, op };
@@ -665,13 +715,38 @@ function mailOverzicht(){
   const k = klanten.find(x=>x.naam===klant) || {};
   if(!k.email){ alert('Geen e-mailadres bekend voor deze klant.'); return; }
 
-  const subject = encodeURIComponent('Fustoverzicht - ' + klant);
-  const body = encodeURIComponent(
-    `Beste ${klant},\n\nIn de bijlage vindt u het actuele overzicht (download eerst de PDF via de knop hiernaast en voeg deze toe).\n\nMet vriendelijke groet,\nVollebregt Cyclamen`
-  );
-  window.location.href = `mailto:${k.email}?subject=${subject}&body=${body}`;
+  const cfg = laadEmailConfig();
+  const onderwerp = 'Fustoverzicht - ' + klant;
+  const tekst = `Beste ${klant},\n\nIn de bijlage vindt u het actuele overzicht.\n\nMet vriendelijke groet,\nVollebregt Cyclamen`;
 
-  logVerzending(klant, k.email);
+  if(cfg.service && cfg.template && cfg.publickey && window.emailjs){
+    const status = document.getElementById('o-status');
+    if(status) status.textContent = '⏳ Versturen...';
+
+    const doc = genereerOverzichtPdf(klant);
+    const pdfBase64 = doc.output('datauristring').split(',')[1];
+
+    emailjs.send(cfg.service, cfg.template, {
+      to_email: k.email,
+      to_naam: klant,
+      onderwerp: onderwerp,
+      bericht: tekst,
+      attachment: pdfBase64,
+      attachment_name: 'Fustoverzicht_' + klant + '.pdf'
+    }).then(()=>{
+      if(status) status.textContent = '✅ Verzonden naar ' + k.email;
+      logVerzending(klant, k.email);
+    }).catch((err)=>{
+      if(status) status.textContent = '❌ Versturen mislukt: ' + (err.text||err);
+      alert('Versturen mislukt. Controleer de e-mail instellingen bij Klanten.\n\n' + (err.text||err));
+    });
+  } else {
+    // fallback: mailto (geen automatische bijlage)
+    const subject = encodeURIComponent(onderwerp);
+    const body = encodeURIComponent(tekst + '\n\n(Voeg de PDF zelf toe via de 📄-knop)');
+    window.location.href = `mailto:${k.email}?subject=${subject}&body=${body}`;
+    logVerzending(klant, k.email);
+  }
 }
 
 // ---------- VERZENDLIJST ----------
@@ -679,6 +754,7 @@ function logVerzending(klant, email){
   let lijst = laad('cc_verzonden');
   const nu = new Date();
   lijst.push({
+    id: Date.now(),
     klant,
     email,
     datum: nu.toISOString().slice(0,10),
@@ -688,19 +764,85 @@ function logVerzending(klant, email){
   toonVerzendlijst();
 }
 
+function verwijderVerzending(id){
+  let lijst = laad('cc_verzonden');
+  lijst = lijst.filter(v=>v.id!==id);
+  bewaar('cc_verzonden', lijst);
+  toonVerzendlijst();
+}
+
 function toonVerzendlijst(){
-  const lijst = laad('cc_verzonden').slice(-10).reverse();
+  const lijst = laad('cc_verzonden').slice(-20).reverse();
   const el = document.getElementById('o-verzendlijst');
   if(!el) return;
   if(lijst.length === 0){
     el.innerHTML = '<div class="small">Nog niets gemaild.</div>';
     return;
   }
-  el.innerHTML = '<table><thead><tr><th>Datum</th><th>Tijd</th><th>Klant</th><th>E-mail</th></tr></thead><tbody>' +
-    lijst.map(v=>`<tr><td>${fmtDatum(v.datum)}</td><td>${v.tijd}</td><td>${v.klant}</td><td>${v.email}</td></tr>`).join('') +
+  el.innerHTML = '<table><thead><tr><th>Datum</th><th>Tijd</th><th>Klant</th><th>E-mail</th><th></th></tr></thead><tbody>' +
+    lijst.map(v=>`<tr><td>${fmtDatum(v.datum)}</td><td>${v.tijd}</td><td>${v.klant}</td><td>${v.email}</td>
+      <td><button class="danger" style="padding:2px 6px;font-size:11px;" onclick="verwijderVerzending(${v.id})">x</button></td></tr>`).join('') +
     '</tbody></table>';
 }
 
+
+// ---------- EMAIL CONFIG (EmailJS) ----------
+function laadEmailConfig(){
+  return laad('cc_email_cfg') || {};
+}
+function opslaanEmailConfig(){
+  const cfg = {
+    service: document.getElementById('cfg-service').value.trim(),
+    template: document.getElementById('cfg-template').value.trim(),
+    publickey: document.getElementById('cfg-publickey').value.trim()
+  };
+  bewaar('cc_email_cfg', cfg);
+  if(cfg.publickey && window.emailjs) emailjs.init(cfg.publickey);
+  document.getElementById('cfg-status').textContent = '✅ Opgeslagen.';
+}
+function vulEmailConfigVelden(){
+  const cfg = laadEmailConfig();
+  if(cfg.service) document.getElementById('cfg-service').value = cfg.service;
+  if(cfg.template) document.getElementById('cfg-template').value = cfg.template;
+  if(cfg.publickey) document.getElementById('cfg-publickey').value = cfg.publickey;
+  if(cfg.publickey && window.emailjs) emailjs.init(cfg.publickey);
+}
+
+// ---------- SYNC: BACKUP EXPORT/IMPORT ----------
+function exportBackup(){
+  const data = {
+    klanten: laad('cc_klanten'),
+    invoer: laad('cc_invoer'),
+    verzonden: laad('cc_verzonden'),
+    email_instellingen: laad('cc_email_cfg')
+  };
+  const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'CC_Beheer_backup_' + new Date().toISOString().slice(0,10) + '.json';
+  a.click();
+}
+
+function importBackup(ev){
+  const file = ev.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e){
+    try{
+      const data = JSON.parse(e.target.result);
+      if(!confirm('Huidige gegevens op dit apparaat overschrijven met de backup?')) return;
+      if(data.klanten) bewaar('cc_klanten', data.klanten);
+      if(data.invoer) bewaar('cc_invoer', data.invoer);
+      if(data.verzonden) bewaar('cc_verzonden', data.verzonden);
+      if(data.email_instellingen) bewaar('cc_email_cfg', data.email_instellingen);
+      alert('✅ Backup geladen. De pagina wordt nu vernieuwd.');
+      location.reload();
+    }catch(err){
+      alert('❌ Ongeldig backup-bestand.');
+    }
+  };
+  reader.readAsText(file);
+}
 
 // ---------- KLANTEN ----------
 let bewerkKlantNaam = null;
@@ -760,7 +902,8 @@ function verwijderKlant(naam){
   toonKlanten();
 }
 function toonKlanten(){
-  document.getElementById('k-lijst').innerHTML = klanten.map(k=>
+  const gesorteerd = [...klanten].sort((a,b)=>a.naam.localeCompare(b.naam,'nl'));
+  document.getElementById('k-lijst').innerHTML = gesorteerd.map(k=>
     `<div class="card" style="padding:8px 10px; display:flex; align-items:center; gap:8px; flex-wrap:nowrap;">
        <div style="flex:1; min-width:0; overflow:hidden;">
          <b>${k.naam}</b> <span class="badge">${k.woonplaats||''}</span>
@@ -777,7 +920,7 @@ function toonKlanten(){
 // ---------- INIT ----------
 vulKlantSelects();
 toonLaatsteInvoer();
-zetBonnummer();
+(function(){ const cfg = laadEmailConfig(); if(cfg.publickey && window.emailjs) emailjs.init(cfg.publickey); })();
 </script>
 </body>
 </html>
