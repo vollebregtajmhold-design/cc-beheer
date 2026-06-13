@@ -384,7 +384,7 @@ function printBon(id){
 
   // toelichtingstekst naast de saldo-tabel
   doc.setFontSize(6.5);
-  const tabelBreedte = 28 + 16; // labelkolom + waardekolom
+  const tabelBreedte = 30 + 14; // labelkolom + waardekolom
   const tekstX = marge + tabelBreedte + 4;
   const tekstW = (pageW - marge) - tekstX;
   const tekst = [
@@ -403,11 +403,12 @@ function printBon(id){
   // saldo-tabel
   y = boxY;
   const saldoRows = [['CC', saldoCC], ['Platen', saldoPL], ['Opzetstukken', saldoOP]];
+  doc.setFontSize(7.5);
   saldoRows.forEach(([label,val])=>{
-    doc.rect(marge, y, 28, 5.5);
-    doc.rect(marge+28, y, 16, 5.5);
+    doc.rect(marge, y, 30, 5.5);
+    doc.rect(marge+30, y, 14, 5.5);
     doc.text(label, marge+2, y+4);
-    doc.text(String(val), marge+28+8, y+4, {align:'center'});
+    doc.text(String(val), marge+30+7, y+4, {align:'center'});
     y += 5.5;
   });
 
