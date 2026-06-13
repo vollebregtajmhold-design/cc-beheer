@@ -211,14 +211,15 @@ function fmtDatum(iso){
 // ---------- INVOER ----------
 document.getElementById('i-datum').value = new Date().toISOString().slice(0,10);
 
+let bewerkInvoerId = null;
+
 function opslaanInvoer(){
   const klant = document.getElementById('i-klant').value;
   const datum = document.getElementById('i-datum').value;
   if(!klant){ document.getElementById('i-status').textContent = '❌ Kies een klant.'; return; }
   if(!datum){ document.getElementById('i-status').textContent = '❌ Kies een datum.'; return; }
 
-  const item = {
-    id: Date.now(),
+  const veld = {
     klant,
     datum,
     week: 'wk ' + getISOWeek(new Date(datum)),
@@ -228,10 +229,20 @@ function opslaanInvoer(){
     opzet: Number(document.getElementById('i-opzet').value)||0,
     opmerking: document.getElementById('i-opmerking').value.trim()
   };
-  invoer.push(item);
-  bewaar('cc_invoer', invoer);
 
-  document.getElementById('i-status').textContent = '✅ Opgeslagen voor ' + klant;
+  if(bewerkInvoerId){
+    const idx = invoer.findIndex(r=>r.id===bewerkInvoerId);
+    if(idx>-1) invoer[idx] = Object.assign({id: bewerkInvoerId}, veld);
+    bewerkInvoerId = null;
+    document.querySelector('#tab-invoer button').textContent = '✅ Opslaan';
+    document.getElementById('i-status').textContent = '✅ Wijziging opgeslagen voor ' + klant;
+  } else {
+    veld.id = Date.now();
+    invoer.push(veld);
+    document.getElementById('i-status').textContent = '✅ Opgeslagen voor ' + klant;
+  }
+
+  bewaar('cc_invoer', invoer);
   document.getElementById('i-cc').value=0;
   document.getElementById('i-platen').value=0;
   document.getElementById('i-opzet').value=0;
@@ -240,12 +251,59 @@ function opslaanInvoer(){
   toonLaatsteInvoer();
 }
 
+function bewerkInvoer(id){
+  const r = invoer.find(x=>x.id===id);
+  if(!r) return;
+  bewerkInvoerId = id;
+  document.getElementById('i-klant').value = r.klant;
+  document.getElementById('i-datum').value = r.datum;
+  document.getElementById('i-bon').value = r.bon;
+  document.getElementById('i-cc').value = r.cc;
+  document.getElementById('i-platen').value = r.platen;
+  document.getElementById('i-opzet').value = r.opzet;
+  document.getElementById('i-opmerking').value = r.opmerking;
+  document.querySelector('#tab-invoer button').textContent = '💾 Wijziging opslaan';
+  document.getElementById('i-klant').scrollIntoView({behavior:'smooth'});
+}
+
+function printBon(id){
+  const r = invoer.find(x=>x.id===id);
+  if(!r) return;
+  const k = klanten.find(x=>x.naam===r.klant) || {};
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+
+  doc.setFontSize(16);
+  doc.text('Bon ' + r.bon, 14, 18);
+  doc.setFontSize(11);
+  doc.text('Klant: ' + r.klant, 14, 30);
+  doc.text((k.adres||'') + ' ' + (k.woonplaats||''), 14, 36);
+  doc.text('Datum: ' + fmtDatum(r.datum) + '  (' + r.week + ')', 14, 42);
+
+  let y = 56;
+  doc.setFontSize(12);
+  doc.text('CC: ' + r.cc, 14, y); y+=8;
+  doc.text('Platen: ' + r.platen, 14, y); y+=8;
+  doc.text('Opzet: ' + r.opzet, 14, y); y+=8;
+  if(r.opmerking){
+    y+=4;
+    doc.setFontSize(10);
+    doc.text('Opmerking: ' + r.opmerking, 14, y);
+  }
+
+  doc.save('Bon_' + r.bon + '_' + r.klant + '.pdf');
+}
+
 function toonLaatsteInvoer(){
   const laatste = invoer.slice(-5).reverse();
   const tbody = document.querySelector('#i-laatste tbody');
   tbody.innerHTML = laatste.map(r=>
     `<tr><td>${fmtDatum(r.datum)}</td><td>${r.klant}</td><td>${r.cc}/${r.platen}/${r.opzet}</td>
-     <td><button class="danger" style="padding:2px 6px;font-size:11px;" onclick="verwijderInvoer(${r.id})">x</button></td></tr>`
+     <td style="white-space:nowrap;">
+       <button class="secondary" style="padding:2px 6px;font-size:11px;" onclick="bewerkInvoer(${r.id})">✏️</button>
+       <button class="secondary" style="padding:2px 6px;font-size:11px;" onclick="printBon(${r.id})">🖨️</button>
+       <button class="danger" style="padding:2px 6px;font-size:11px;" onclick="verwijderInvoer(${r.id})">x</button>
+     </td></tr>`
   ).join('');
 }
 function verwijderInvoer(id){
@@ -362,21 +420,52 @@ function mailOverzicht(){
 }
 
 // ---------- KLANTEN ----------
+let bewerkKlantNaam = null;
+
 function opslaanKlant(){
   const naam = document.getElementById('k-naam').value.trim();
   if(!naam){ document.getElementById('k-status').textContent='❌ Naam verplicht.'; return; }
-  klanten.push({
+  const data = {
     naam,
     adres: document.getElementById('k-adres').value.trim(),
     woonplaats: document.getElementById('k-woonplaats').value.trim(),
     telefoon: document.getElementById('k-telefoon').value.trim(),
     email: document.getElementById('k-email').value.trim()
-  });
+  };
+
+  if(bewerkKlantNaam){
+    // update bestaande klant, en evt. naam in invoer aanpassen
+    const idx = klanten.findIndex(k=>k.naam===bewerkKlantNaam);
+    if(idx>-1) klanten[idx] = data;
+    if(bewerkKlantNaam !== naam){
+      invoer.forEach(r=>{ if(r.klant===bewerkKlantNaam) r.klant = naam; });
+      bewaar('cc_invoer', invoer);
+    }
+    document.getElementById('k-status').textContent='✅ Gewijzigd.';
+    bewerkKlantNaam = null;
+    document.querySelector('#tab-klanten button').textContent = '➕ Klant toevoegen';
+  } else {
+    klanten.push(data);
+    document.getElementById('k-status').textContent='✅ Toegevoegd.';
+  }
+
   bewaar('cc_klanten', klanten);
   ['k-naam','k-adres','k-woonplaats','k-telefoon','k-email'].forEach(id=>document.getElementById(id).value='');
-  document.getElementById('k-status').textContent='✅ Toegevoegd.';
   vulKlantSelects();
   toonKlanten();
+}
+
+function bewerkKlant(naam){
+  const k = klanten.find(x=>x.naam===naam);
+  if(!k) return;
+  bewerkKlantNaam = naam;
+  document.getElementById('k-naam').value = k.naam;
+  document.getElementById('k-adres').value = k.adres||'';
+  document.getElementById('k-woonplaats').value = k.woonplaats||'';
+  document.getElementById('k-telefoon').value = k.telefoon||'';
+  document.getElementById('k-email').value = k.email||'';
+  document.querySelector('#tab-klanten button').textContent = '💾 Wijziging opslaan';
+  document.getElementById('k-naam').scrollIntoView({behavior:'smooth'});
 }
 function verwijderKlant(naam){
   if(!confirm('Klant "'+naam+'" verwijderen?')) return;
@@ -390,7 +479,10 @@ function toonKlanten(){
     `<div class="card" style="padding:8px 10px;">
        <b>${k.naam}</b> <span class="badge">${k.woonplaats||''}</span>
        <div class="small">${k.email||''} ${k.telefoon||''}</div>
-       <div class="item-actions"><button class="danger" onclick="verwijderKlant('${k.naam}')">Verwijderen</button></div>
+       <div class="item-actions">
+         <button class="secondary" onclick="bewerkKlant('${k.naam}')">Bewerken</button>
+         <button class="danger" onclick="verwijderKlant('${k.naam}')">Verwijderen</button>
+       </div>
      </div>`
   ).join('') || '<div class="small">Nog geen klanten toegevoegd.</div>';
 }
