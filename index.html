@@ -10,7 +10,6 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="CC Beheer">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
 <style>
   :root, [data-theme="light"]{
     --bg:#f5f6f8; --card:#ffffff; --border:#dde1e6; --input-bg:#f0f1f3;
@@ -168,16 +167,12 @@
     <div id="k-status" class="small"></div>
 
     <hr style="border-color:var(--border); margin:14px 0;">
-    <div class="small" style="font-weight:600; margin-bottom:6px;">✉️ E-mail instellingen (EmailJS)</div>
+    <div class="small" style="font-weight:600; margin-bottom:6px;">✉️ E-mail instellingen (Google Apps Script)</div>
     <div class="small" style="margin-bottom:8px;">
-      Maak gratis een account op emailjs.com, koppel je e-mailadres en vul hier de gegevens in om direct vanuit de app te mailen (met PDF-bijlage).
+      Plak hier de webapp-URL van je Google Apps Script mail-service (gratis, verstuurt vanuit jouw Gmail incl. PDF).
     </div>
-    <label>Service ID</label>
-    <input type="text" id="cfg-service">
-    <label>Template ID</label>
-    <input type="text" id="cfg-template">
-    <label>Public Key</label>
-    <input type="text" id="cfg-publickey">
+    <label>Webapp-URL</label>
+    <input type="text" id="cfg-url" placeholder="https://script.google.com/macros/s/.../exec">
     <button class="secondary" onclick="opslaanEmailConfig()">💾 Instellingen opslaan</button>
     <div id="cfg-status" class="small"></div>
 
@@ -718,28 +713,37 @@ function mailOverzicht(){
   const cfg = laadEmailConfig();
   const onderwerp = 'Fustoverzicht - ' + klant;
   const tekst = `Beste ${klant},\n\nIn de bijlage vindt u het actuele overzicht.\n\nMet vriendelijke groet,\nVollebregt Cyclamen`;
+  const status = document.getElementById('o-status');
 
-  if(cfg.service && cfg.template && cfg.publickey && window.emailjs){
-    const status = document.getElementById('o-status');
+  if(cfg.url){
     if(status) status.textContent = '⏳ Versturen...';
 
     const doc = genereerOverzichtPdf(klant);
     const pdfBase64 = doc.output('datauristring').split(',')[1];
 
-    emailjs.send(cfg.service, cfg.template, {
-      to_email: k.email,
-      to_naam: klant,
-      onderwerp: onderwerp,
-      bericht: tekst,
-      attachment: pdfBase64,
-      attachment_name: 'Fustoverzicht_' + klant + '.pdf'
-    }).then(()=>{
-      if(status) status.textContent = '✅ Verzonden naar ' + k.email;
-      logVerzending(klant, k.email);
-    }).catch((err)=>{
-      if(status) status.textContent = '❌ Versturen mislukt: ' + (err.text||err);
-      alert('Versturen mislukt. Controleer de e-mail instellingen bij Klanten.\n\n' + (err.text||err));
-    });
+    fetch(cfg.url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // voorkomt CORS-preflight
+      body: JSON.stringify({
+        to_email: k.email,
+        onderwerp: onderwerp,
+        bericht: tekst,
+        attachment: pdfBase64,
+        attachment_name: 'Fustoverzicht_' + klant + '.pdf'
+      })
+    }).then(res => res.json())
+      .then(json => {
+        if(json.ok){
+          if(status) status.textContent = '✅ Verzonden naar ' + k.email;
+          logVerzending(klant, k.email);
+        } else {
+          if(status) status.textContent = '❌ Versturen mislukt: ' + json.error;
+        }
+      })
+      .catch(err => {
+        if(status) status.textContent = '❌ Versturen mislukt (verbinding).';
+        console.error(err);
+      });
   } else {
     // fallback: mailto (geen automatische bijlage)
     const subject = encodeURIComponent(onderwerp);
@@ -786,26 +790,18 @@ function toonVerzendlijst(){
 }
 
 
-// ---------- EMAIL CONFIG (EmailJS) ----------
+// ---------- EMAIL CONFIG (Google Apps Script webhook) ----------
 function laadEmailConfig(){
   return laad('cc_email_cfg') || {};
 }
 function opslaanEmailConfig(){
-  const cfg = {
-    service: document.getElementById('cfg-service').value.trim(),
-    template: document.getElementById('cfg-template').value.trim(),
-    publickey: document.getElementById('cfg-publickey').value.trim()
-  };
+  const cfg = { url: document.getElementById('cfg-url').value.trim() };
   bewaar('cc_email_cfg', cfg);
-  if(cfg.publickey && window.emailjs) emailjs.init(cfg.publickey);
   document.getElementById('cfg-status').textContent = '✅ Opgeslagen.';
 }
 function vulEmailConfigVelden(){
   const cfg = laadEmailConfig();
-  if(cfg.service) document.getElementById('cfg-service').value = cfg.service;
-  if(cfg.template) document.getElementById('cfg-template').value = cfg.template;
-  if(cfg.publickey) document.getElementById('cfg-publickey').value = cfg.publickey;
-  if(cfg.publickey && window.emailjs) emailjs.init(cfg.publickey);
+  if(cfg.url) document.getElementById('cfg-url').value = cfg.url;
 }
 
 // ---------- SYNC: BACKUP EXPORT/IMPORT ----------
@@ -920,7 +916,6 @@ function toonKlanten(){
 // ---------- INIT ----------
 vulKlantSelects();
 toonLaatsteInvoer();
-(function(){ const cfg = laadEmailConfig(); if(cfg.publickey && window.emailjs) emailjs.init(cfg.publickey); })();
 </script>
 </body>
 </html>
