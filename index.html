@@ -135,6 +135,10 @@
 
     <hr style="border-color:var(--border); margin:14px 0;">
     <button class="secondary" onclick="exportTotaalPdf()">📊 Totaaloverzicht alle klanten</button>
+
+    <hr style="border-color:var(--border); margin:14px 0;">
+    <div class="small" style="font-weight:600; margin-bottom:4px;">Verzendlijst (laatste mails)</div>
+    <div id="o-verzendlijst"></div>
   </div>
 
   <!-- KLANTEN -->
@@ -205,7 +209,7 @@ document.querySelectorAll('.tab').forEach(t=>{
     document.querySelectorAll('.content > .card').forEach(x=>x.classList.add('hidden'));
     t.classList.add('active');
     document.getElementById('tab-'+t.dataset.tab).classList.remove('hidden');
-    if(t.dataset.tab==='overzicht') toonOverzicht();
+    if(t.dataset.tab==='overzicht'){ toonOverzicht(); toonVerzendlijst(); }
     if(t.dataset.tab==='klanten') toonKlanten();
     if(t.dataset.tab==='invoer') toonLaatsteInvoer();
   };
@@ -325,7 +329,7 @@ function printBon(id){
   doc.setFontSize(11); doc.setFont(undefined,'bold');
   doc.text(r.klant, marge, y);
   doc.setFontSize(8); doc.setFont(undefined,'normal');
-  doc.text('Transporteur: ' + (r.transporteur||'-'), pageW-marge, y, {align:'right'});
+  doc.text('Transporteur: ' + (r.transporteur||'-'), pageW/2 + 8, y);
   y += 5;
   doc.text(k.adres||'', marge, y);
   y += 4;
@@ -338,7 +342,7 @@ function printBon(id){
   y += 4;
   const c2 = marge + breedte*0.46;
   const c3 = marge + breedte*0.72;
-  const c4 = marge + breedte*0.96;
+  const c4 = marge + breedte*0.88;
   doc.setFillColor(235,235,235);
   doc.rect(marge, y, breedte, 16, 'F');
   y += 4;
@@ -665,7 +669,37 @@ function mailOverzicht(){
     `Beste ${klant},\n\nIn de bijlage vindt u het actuele overzicht (download eerst de PDF via de knop hiernaast en voeg deze toe).\n\nMet vriendelijke groet,\nVollebregt Cyclamen`
   );
   window.location.href = `mailto:${k.email}?subject=${subject}&body=${body}`;
+
+  logVerzending(klant, k.email);
 }
+
+// ---------- VERZENDLIJST ----------
+function logVerzending(klant, email){
+  let lijst = laad('cc_verzonden');
+  const nu = new Date();
+  lijst.push({
+    klant,
+    email,
+    datum: nu.toISOString().slice(0,10),
+    tijd: nu.toLocaleTimeString('nl-NL', {hour:'2-digit', minute:'2-digit'})
+  });
+  bewaar('cc_verzonden', lijst);
+  toonVerzendlijst();
+}
+
+function toonVerzendlijst(){
+  const lijst = laad('cc_verzonden').slice(-10).reverse();
+  const el = document.getElementById('o-verzendlijst');
+  if(!el) return;
+  if(lijst.length === 0){
+    el.innerHTML = '<div class="small">Nog niets gemaild.</div>';
+    return;
+  }
+  el.innerHTML = '<table><thead><tr><th>Datum</th><th>Tijd</th><th>Klant</th><th>E-mail</th></tr></thead><tbody>' +
+    lijst.map(v=>`<tr><td>${fmtDatum(v.datum)}</td><td>${v.tijd}</td><td>${v.klant}</td><td>${v.email}</td></tr>`).join('') +
+    '</tbody></table>';
+}
+
 
 // ---------- KLANTEN ----------
 let bewerkKlantNaam = null;
