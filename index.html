@@ -352,15 +352,14 @@ function printBon(id){
   y += 3;
   doc.line(marge, y, pageW-marge, y);
 
-  // ---- Opmerking ----
-  y += 6;
-  doc.text('Opmerking:', marge, y);
+  // ---- Opmerking (alleen tonen als ingevuld) ----
   if(r.opmerking){
-    y += 4;
-    doc.text(doc.splitTextToSize(r.opmerking, breedte), marge, y);
-    y += (doc.splitTextToSize(r.opmerking, breedte).length - 1) * 4;
+    y += 5;
+    const opmRegels = doc.splitTextToSize(r.opmerking, breedte);
+    doc.text(opmRegels, marge, y);
+    y += (opmRegels.length - 1) * 4;
   }
-  y += 6;
+  y += 5;
   doc.line(marge, y, pageW-marge, y);
 
   // ---- Actueel Nieuw Saldo ----
@@ -372,8 +371,10 @@ function printBon(id){
   doc.setFont(undefined,'bold');
   doc.text('Actueel Nieuw Saldo', marge, y);
   doc.setFont(undefined,'normal');
+  y += 2;
+  const boxY = y;
 
-  // toelichtingstekst
+  // toelichtingstekst naast de saldo-tabel
   doc.setFontSize(6.5);
   const tekst = [
     'Wilt u er voor zorgdragen dat het saldo binnen 5 werkdagen retour gebracht wordt,',
@@ -381,12 +382,12 @@ function printBon(id){
     'Na 5 werkdagen kunnen we kosten in rekening brengen.',
     'Positief is ons tegoed, negatief is uw tegoed.'
   ];
-  let ty = y + 4;
-  tekst.forEach(t=>{ doc.text(t, marge, ty); ty += 3.5; });
+  let ty = boxY + 5;
+  tekst.forEach(t=>{ doc.text(t, marge+62, ty); ty += 3.8; });
   doc.setFontSize(8);
 
-  // saldo-tabel onder de toelichting
-  y = ty + 3;
+  // saldo-tabel
+  y = boxY;
   const saldoRows = [['CC', saldoCC], ['Platen', saldoPL], ['Opzetstukken', saldoOP]];
   saldoRows.forEach(([label,val])=>{
     doc.rect(marge, y, 35, 5.5);
@@ -471,17 +472,17 @@ function exportPdf(){
   const marge = 14, pageW = 210, breedte = pageW - marge*2;
 
   // ---- Logo + ons bedrijf ----
-  doc.addImage(LOGO_BASE64, 'JPEG', marge, 10, 30, 17.4);
+  doc.addImage(LOGO_BASE64, 'JPEG', marge, 8, 38.6, 22.4);
   doc.setFontSize(11); doc.setFont(undefined,'bold');
-  doc.text('P.J.J.Vollebregt BV', marge+36, 14);
+  doc.text('P.J.J.Vollebregt BV', marge+44, 14);
   doc.setFont(undefined,'normal');
-  doc.text('Legmeerdijk 207', marge+36, 19);
-  doc.text('Aalsmeer', marge+36, 24);
-  doc.text('E-mail        youngplantsvollebregt@gmail.com', marge+36, 29);
-  doc.text('Whatsapp    06 15001022', marge+36, 34);
+  doc.text('Legmeerdijk 207', marge+44, 19);
+  doc.text('Aalsmeer', marge+44, 24);
+  doc.text('E-mail        youngplantsvollebregt@gmail.com', marge+44, 29);
+  doc.text('Whatsapp    06 15001022', marge+44, 34);
 
   // ---- Klant / datum / saldo-uitleg ----
-  let y = 42;
+  let y = 38;
   doc.setLineWidth(0.4);
   doc.setFontSize(11); doc.setFont(undefined,'bold');
   doc.text(klant, marge, y);
@@ -550,23 +551,26 @@ function exportPdf(){
   doc.text(String(tpl), xpos[4]+kol[4].w/2, y+6, {align:'center'});
   doc.text(String(top), xpos[5]+kol[5].w/2, y+6, {align:'center'});
   y += 12;
+  doc.line(marge, y-3, pageW-marge, y-3);
 
   // ---- Data rijen ----
   doc.setFont(undefined,'normal'); doc.setFontSize(9);
   rows.forEach(r=>{
     if(y > 280){ doc.addPage(); y = 20; }
-    const rh = 7;
+    const rh = 5.5;
     pdfKleurCel(doc, r.cc, xpos[3], y, kol[3].w, rh);
     pdfKleurCel(doc, r.platen, xpos[4], y, kol[4].w, rh);
     if(r.opzet) pdfKleurCel(doc, r.opzet, xpos[5], y, kol[5].w, rh);
 
-    doc.text(fmtDatum(r.datum) + ' ' + r.week, xpos[0], y+5);
-    doc.text(String(r.id||''), xpos[2], y+5);
-    doc.text(r.cc ? String(r.cc) : '', xpos[3]+kol[3].w/2, y+5, {align:'center'});
-    doc.text(r.platen ? String(r.platen) : '', xpos[4]+kol[4].w/2, y+5, {align:'center'});
-    doc.text(r.opzet ? String(r.opzet) : '', xpos[5]+kol[5].w/2, y+5, {align:'center'});
-    doc.text(r.bon ? String(r.bon) : '', xpos[6], y+5);
-    doc.text(r.opmerking || (r.transporteur||''), xpos[7], y+5);
+    const kortId = String(r.id||'').slice(-5);
+    doc.text(fmtDatum(r.datum), xpos[0], y+4);
+    doc.text(r.week, xpos[1]+2, y+4);
+    doc.text(kortId, xpos[2]+2, y+4);
+    doc.text(r.cc ? String(r.cc) : '', xpos[3]+kol[3].w/2, y+4, {align:'center'});
+    doc.text(r.platen ? String(r.platen) : '', xpos[4]+kol[4].w/2, y+4, {align:'center'});
+    doc.text(r.opzet ? String(r.opzet) : '', xpos[5]+kol[5].w/2, y+4, {align:'center'});
+    doc.text(r.bon ? String(r.bon) : '', xpos[6], y+4);
+    doc.text(r.opmerking || (r.transporteur||''), xpos[7], y+4);
     y += rh;
   });
 
