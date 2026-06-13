@@ -66,7 +66,7 @@
   <!-- INVOER -->
   <div id="tab-invoer" class="card">
     <label>Klant</label>
-    <select id="i-klant"></select>
+    <select id="i-klant" onchange="vulTransporteur()"></select>
 
     <label>Datum</label>
     <input type="date" id="i-datum">
@@ -141,6 +141,8 @@
     <input type="text" id="k-telefoon">
     <label>E-mail</label>
     <input type="email" id="k-email">
+    <label>Vaste transporteur</label>
+    <input type="text" id="k-transporteur" placeholder="bv. Hogenboom">
     <button onclick="opslaanKlant()">➕ Klant toevoegen</button>
     <div id="k-status" class="small"></div>
 
@@ -158,6 +160,12 @@ function toggleThema(){
   thema = (thema === 'light') ? 'dark' : 'light';
   document.documentElement.setAttribute('data-theme', thema);
   localStorage.setItem('cc_thema', thema);
+}
+
+function vulTransporteur(){
+  const klant = document.getElementById('i-klant').value;
+  const k = klanten.find(x=>x.naam===klant);
+  document.getElementById('i-transporteur').value = (k && k.transporteur) ? k.transporteur : '';
 }
 
 // ---------- BONNUMMER ----------
@@ -309,25 +317,22 @@ function printBon(id){
   doc.text('Transporteur: ' + (r.transporteur||'-'), pageW-marge, y, {align:'right'});
   y += 7;
   doc.text(k.adres||'', marge, y);
-  doc.text('Tel:', pageW/2, y);
   y += 6;
   doc.text(k.woonplaats||'', marge, y);
-  doc.text(k.telefoon||'', pageW/2, y);
+  doc.text('Tel: ' + (k.telefoon||''), pageW/2 + 10, y);
   y += 6;
   doc.line(marge, y, pageW-marge, y);
 
   // ---- Tabel CC / Platen / Opzetstuk ----
-  y += 2;
-  const breedte2 = breedte;
-  const c1 = marge + breedte2*0.18;
-  const c2 = marge + breedte2*0.46;
-  const c3 = marge + breedte2*0.72;
-  const c4 = marge + breedte2*0.96;
+  y += 10;
+  const c2 = marge + breedte*0.46;
+  const c3 = marge + breedte*0.72;
+  const c4 = marge + breedte*0.96;
   doc.setFont(undefined,'bold');
-  doc.text('cc', c2, y+8, {align:'center'});
-  doc.text('platen', c3, y+8, {align:'center'});
-  doc.text('opzetstuk', c4, y+8, {align:'center'});
-  y += 12;
+  doc.text('cc', c2, y, {align:'center'});
+  doc.text('platen', c3, y, {align:'center'});
+  doc.text('opzetstuk', c4, y, {align:'center'});
+  y += 4;
   doc.line(marge, y, pageW-marge, y);
   y += 9;
   doc.setFontSize(14);
@@ -336,7 +341,7 @@ function printBon(id){
   doc.text(String(r.platen), c3, y, {align:'center'});
   doc.text(String(r.opzet), c4, y, {align:'center'});
   doc.setFontSize(11); doc.setFont(undefined,'normal');
-  y += 6;
+  y += 5;
   doc.line(marge, y, pageW-marge, y);
 
   // ---- Opmerking ----
@@ -346,7 +351,7 @@ function printBon(id){
     y += 6;
     doc.text(doc.splitTextToSize(r.opmerking, breedte), marge, y);
   }
-  y += 14;
+  y += 10;
   doc.line(marge, y, pageW-marge, y);
 
   // ---- Actueel Nieuw Saldo ----
@@ -354,21 +359,25 @@ function printBon(id){
   let saldoCC=0, saldoPL=0, saldoOP=0;
   rows.forEach(x=>{ saldoCC+=x.cc; saldoPL+=x.platen; saldoOP+=x.opzet; });
 
-  y += 8;
+  y += 9;
   doc.setFont(undefined,'bold');
   doc.text('Actueel Nieuw Saldo', marge, y);
   doc.setFont(undefined,'normal');
-  const tekst = [
-    'Wilt u er voor zorgdragen dat het saldo binnen 5 werkdagen retour gebracht worden,',
-    'of is overgeboekt naar ons FH nummer: 2881',
-    '(Na 5 werkdagen kunnen we kosten in rekening brengen)',
-    '(positief is ons tegoed, negatief is uw tegoed)'
-  ];
+
+  // toelichtingstekst, eerst, ruimte erna voor de tabel
   doc.setFontSize(9);
-  tekst.forEach((t,i)=> doc.text(t, marge+65, y - 2 + i*5));
+  const tekst = [
+    'Wilt u er voor zorgdragen dat het saldo binnen 5 werkdagen retour gebracht wordt,',
+    'of overgeboekt naar ons FH nummer: 2881.',
+    'Na 5 werkdagen kunnen we kosten in rekening brengen.',
+    'Positief is ons tegoed, negatief is uw tegoed.'
+  ];
+  let ty = y + 6;
+  tekst.forEach(t=>{ doc.text(t, marge, ty); ty += 5; });
   doc.setFontSize(11);
 
-  y += 6;
+  // saldo-tabel onder de toelichting
+  y = ty + 4;
   const saldoRows = [['CC', saldoCC], ['Platen', saldoPL], ['Opzetstukken', saldoOP]];
   saldoRows.forEach(([label,val])=>{
     doc.rect(marge, y, 50, 7);
@@ -517,7 +526,8 @@ function opslaanKlant(){
     adres: document.getElementById('k-adres').value.trim(),
     woonplaats: document.getElementById('k-woonplaats').value.trim(),
     telefoon: document.getElementById('k-telefoon').value.trim(),
-    email: document.getElementById('k-email').value.trim()
+    email: document.getElementById('k-email').value.trim(),
+    transporteur: document.getElementById('k-transporteur').value.trim()
   };
 
   if(bewerkKlantNaam){
@@ -537,7 +547,7 @@ function opslaanKlant(){
   }
 
   bewaar('cc_klanten', klanten);
-  ['k-naam','k-adres','k-woonplaats','k-telefoon','k-email'].forEach(id=>document.getElementById(id).value='');
+  ['k-naam','k-adres','k-woonplaats','k-telefoon','k-email','k-transporteur'].forEach(id=>document.getElementById(id).value='');
   vulKlantSelects();
   toonKlanten();
 }
@@ -551,6 +561,7 @@ function bewerkKlant(naam){
   document.getElementById('k-woonplaats').value = k.woonplaats||'';
   document.getElementById('k-telefoon').value = k.telefoon||'';
   document.getElementById('k-email').value = k.email||'';
+  document.getElementById('k-transporteur').value = k.transporteur||'';
   document.querySelector('#tab-klanten button').textContent = '💾 Wijziging opslaan';
   document.getElementById('k-naam').scrollIntoView({behavior:'smooth'});
 }
