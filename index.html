@@ -49,7 +49,7 @@
   .hidden{display:none;}
   .small{font-size:12px; color:var(--muted);}
   .item-actions{display:flex; gap:6px; margin-top:6px;}
-  .badge{display:inline-block; padding:2px 6px; border-radius:6px; background:#2a2e37; font-size:11px; color:var(--muted);}
+  .badge{display:inline-block; padding:2px 6px; border-radius:6px; background:#e0e3e8; font-size:11px; color:#000;}
 </style>
 </head>
 <body>
@@ -658,12 +658,14 @@ function verwijderKlant(naam){
 }
 function toonKlanten(){
   document.getElementById('k-lijst').innerHTML = klanten.map(k=>
-    `<div class="card" style="padding:8px 10px;">
-       <b>${k.naam}</b> <span class="badge">${k.woonplaats||''}</span>
-       <div class="small">${k.email||''} ${k.telefoon||''}</div>
-       <div class="item-actions">
-         <button class="secondary" onclick="bewerkKlant('${k.naam}')">Bewerken</button>
-         <button class="danger" onclick="verwijderKlant('${k.naam}')">Verwijderen</button>
+    `<div class="card" style="padding:8px 10px; display:flex; align-items:center; gap:8px; flex-wrap:nowrap;">
+       <div style="flex:1; min-width:0; overflow:hidden;">
+         <b>${k.naam}</b> <span class="badge">${k.woonplaats||''}</span>
+         <div class="small" style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${k.email||''} ${k.telefoon||''}</div>
+       </div>
+       <div class="item-actions" style="margin:0; flex-shrink:0;">
+         <button class="secondary" style="padding:6px 8px;" title="Bewerken" onclick="bewerkKlant('${k.naam}')">✏️</button>
+         <button class="danger" style="padding:6px 8px;" title="Verwijderen" onclick="verwijderKlant('${k.naam}')">🗑️</button>
        </div>
      </div>`
   ).join('') || '<div class="small">Nog geen klanten toegevoegd.</div>';
