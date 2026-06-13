@@ -180,9 +180,20 @@
     <div id="k-lijst"></div>
 
     <hr style="border-color:var(--border); margin:14px 0;">
-    <div class="small" style="font-weight:600; margin-bottom:6px;">📱 Synchroniseren tussen apparaten</div>
+    <div class="small" style="font-weight:600; margin-bottom:6px;">☁️ Synchroniseren tussen apparaten</div>
     <div class="small" style="margin-bottom:8px;">
-      Download een backup-bestand en open dit op je andere telefoon/computer om dezelfde gegevens te laden.
+      Werkt via dezelfde Google-koppeling als e-mail. Klik op je ene apparaat op "Naar cloud", en op je andere apparaat op "Van cloud".
+    </div>
+    <div class="row">
+      <button class="secondary" onclick="syncUpload()">⬆️ Naar cloud</button>
+      <button class="secondary" onclick="syncDownload()">⬇️ Van cloud</button>
+    </div>
+    <div id="sync-status" class="small" style="margin-top:6px;"></div>
+
+    <hr style="border-color:var(--border); margin:14px 0;">
+    <div class="small" style="font-weight:600; margin-bottom:6px;">💾 Backup-bestand (reserve)</div>
+    <div class="small" style="margin-bottom:8px;">
+      Download eventueel ook een lokaal backup-bestand.
     </div>
     <div class="row">
       <button class="secondary" onclick="exportBackup()">⬇️ Backup downloaden</button>
@@ -802,6 +813,54 @@ function opslaanEmailConfig(){
 function vulEmailConfigVelden(){
   const cfg = laadEmailConfig();
   if(cfg.url) document.getElementById('cfg-url').value = cfg.url;
+}
+
+// ---------- SYNC: CLOUD VIA GOOGLE APPS SCRIPT ----------
+function syncUpload(){
+  const cfg = laadEmailConfig();
+  const status = document.getElementById('sync-status');
+  if(!cfg.url){ alert('Vul eerst de Webapp-URL in bij E-mail instellingen.'); return; }
+
+  const payload = {
+    klanten: laad('cc_klanten'),
+    invoer: laad('cc_invoer'),
+    verzonden: laad('cc_verzonden')
+  };
+
+  if(status) status.textContent = '⏳ Versturen naar cloud...';
+  fetch(cfg.url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify({ action: 'save', payload })
+  }).then(res=>res.json())
+    .then(json=>{
+      if(status) status.textContent = json.ok ? '✅ Geüpload naar cloud.' : '❌ Mislukt: ' + json.error;
+    })
+    .catch(()=>{ if(status) status.textContent = '❌ Versturen mislukt (verbinding).'; });
+}
+
+function syncDownload(){
+  const cfg = laadEmailConfig();
+  const status = document.getElementById('sync-status');
+  if(!cfg.url){ alert('Vul eerst de Webapp-URL in bij E-mail instellingen.'); return; }
+
+  if(status) status.textContent = '⏳ Ophalen uit cloud...';
+  fetch(cfg.url + '?action=load')
+    .then(res=>res.json())
+    .then(json=>{
+      if(!json.ok || !json.payload){
+        if(status) status.textContent = 'ℹ️ Nog niets in de cloud. Klik eerst op "Naar cloud" op je andere apparaat.';
+        return;
+      }
+      if(!confirm('Huidige gegevens op dit apparaat overschrijven met de cloud-versie?')) return;
+      const p = json.payload;
+      if(p.klanten) bewaar('cc_klanten', p.klanten);
+      if(p.invoer) bewaar('cc_invoer', p.invoer);
+      if(p.verzonden) bewaar('cc_verzonden', p.verzonden);
+      if(status) status.textContent = '✅ Opgehaald. Pagina wordt vernieuwd.';
+      setTimeout(()=>location.reload(), 800);
+    })
+    .catch(()=>{ if(status) status.textContent = '❌ Ophalen mislukt (verbinding).'; });
 }
 
 // ---------- SYNC: BACKUP EXPORT/IMPORT ----------
