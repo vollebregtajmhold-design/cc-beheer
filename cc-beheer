@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="nl" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>CC Beheer</title>
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="manifest" href="manifest.json">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="CC Beheer">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+  :root{
+    --bg:#0f1115; --card:#1a1d24; --border:#2a2e37;
+    --text:#e8eaed; --muted:#9aa0a6; --accent:#4f8cff;
+    --green:#4caf50; --red:#e57373;
+  }
+  *{box-sizing:border-box; font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;}
+  body{margin:0; background:var(--bg); color:var(--text); padding-bottom:70px;}
+  header{padding:14px 16px; border-bottom:1px solid var(--border); position:sticky; top:0; background:var(--bg); z-index:10;}
+  h1{margin:0; font-size:18px;}
+  .tabs{display:flex; gap:6px; padding:10px 16px 0;}
+  .tab{flex:1; text-align:center; padding:8px 4px; border-radius:8px 8px 0 0; background:var(--card); color:var(--muted); cursor:pointer; font-size:13px; border:1px solid var(--border); border-bottom:none;}
+  .tab.active{color:var(--text); background:var(--bg); border-bottom:2px solid var(--bg); position:relative; top:1px;}
+  .content{padding:16px; max-width:700px; margin:0 auto;}
+  .card{background:var(--card); border:1px solid var(--border); border-radius:10px; padding:14px; margin-bottom:12px;}
+  label{display:block; font-size:12px; color:var(--muted); margin:8px 0 4px;}
+  input, select, textarea{width:100%; padding:9px; border-radius:8px; border:1px solid var(--border); background:#11141a; color:var(--text); font-size:14px;}
+  button{padding:10px 14px; border-radius:8px; border:none; background:var(--accent); color:#fff; font-size:14px; cursor:pointer; margin-top:4px;}
+  button.secondary{background:#2a2e37;}
+  button.danger{background:var(--red);}
+  .row{display:flex; gap:8px;}
+  .row > *{flex:1;}
+  table{width:100%; border-collapse:collapse; font-size:13px; margin-top:8px;}
+  th, td{padding:6px 4px; border-bottom:1px solid var(--border); text-align:left;}
+  th{color:var(--muted); font-weight:500;}
+  .totals{display:flex; justify-content:space-between; font-weight:600; margin-top:8px; padding-top:8px; border-top:1px solid var(--border);}
+  .hidden{display:none;}
+  .small{font-size:12px; color:var(--muted);}
+  .item-actions{display:flex; gap:6px; margin-top:6px;}
+  .badge{display:inline-block; padding:2px 6px; border-radius:6px; background:#2a2e37; font-size:11px; color:var(--muted);}
+</style>
+</head>
+<body>
+<header>
+  <h1>📦 CC Beheer 2026</h1>
+</header>
+
+<div class="tabs">
+  <div class="tab active" data-tab="invoer">Invoer</div>
+  <div class="tab" data-tab="overzicht">Overzicht</div>
+  <div class="tab" data-tab="klanten">Klanten</div>
+</div>
+
+<div class="content">
+
+  <!-- INVOER -->
+  <div id="tab-invoer" class="card">
+    <label>Klant</label>
+    <select id="i-klant"></select>
+
+    <label>Datum</label>
+    <input type="date" id="i-datum">
+
+    <label>Bonnummer</label>
+    <input type="text" id="i-bon" placeholder="bv. 1001">
+
+    <div class="row">
+      <div>
+        <label>CC</label>
+        <input type="number" id="i-cc" value="0">
+      </div>
+      <div>
+        <label>Platen</label>
+        <input type="number" id="i-platen" value="0">
+      </div>
+      <div>
+        <label>Opzet</label>
+        <input type="number" id="i-opzet" value="0">
+      </div>
+    </div>
+
+    <label>Opmerking</label>
+    <textarea id="i-opmerking" rows="2"></textarea>
+
+    <button onclick="opslaanInvoer()">✅ Opslaan</button>
+    <div id="i-status" class="small"></div>
+
+    <hr style="border-color:var(--border); margin:14px 0;">
+    <div class="small">Laatste invoer</div>
+    <table id="i-laatste"><tbody></tbody></table>
+  </div>
+
+  <!-- OVERZICHT -->
+  <div id="tab-overzicht" class="card hidden">
+    <label>Klant</label>
+    <select id="o-klant" onchange="toonOverzicht()"></select>
+
+    <div id="o-klantinfo" class="small" style="margin-top:8px;"></div>
+
+    <table id="o-tabel">
+      <thead>
+        <tr><th>Datum</th><th>Wk</th><th>Bon</th><th>CC</th><th>Platen</th><th>Opzet</th><th>Opm.</th></tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+
+    <div class="totals">
+      <span id="o-totcc">CC: 0</span>
+      <span id="o-totplaten">Platen: 0</span>
+      <span id="o-totopzet">Opzet: 0</span>
+    </div>
+
+    <div class="item-actions">
+      <button onclick="exportPdf()">📄 PDF</button>
+      <button class="secondary" onclick="mailOverzicht()">✉️ Mail</button>
+    </div>
+  </div>
+
+  <!-- KLANTEN -->
+  <div id="tab-klanten" class="card hidden">
+    <label>Naam</label>
+    <input type="text" id="k-naam" placeholder="Klantnaam">
+    <label>Adres</label>
+    <input type="text" id="k-adres">
+    <label>Woonplaats</label>
+    <input type="text" id="k-woonplaats">
+    <label>Telefoon</label>
+    <input type="text" id="k-telefoon">
+    <label>E-mail</label>
+    <input type="email" id="k-email">
+    <button onclick="opslaanKlant()">➕ Klant toevoegen</button>
+    <div id="k-status" class="small"></div>
+
+    <hr style="border-color:var(--border); margin:14px 0;">
+    <div id="k-lijst"></div>
+  </div>
+
+</div>
+
+<script>
+// ---------- DATA ----------
+function laad(key){ try{ return JSON.parse(localStorage.getItem(key)) || []; }catch(e){ return []; } }
+function bewaar(key, data){ localStorage.setItem(key, JSON.stringify(data)); }
+
+let klanten = laad('cc_klanten');
+let invoer  = laad('cc_invoer');
+
+// ---------- TABS ----------
+document.querySelectorAll('.tab').forEach(t=>{
+  t.onclick = ()=>{
+    document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+    document.querySelectorAll('.content > .card').forEach(x=>x.classList.add('hidden'));
+    t.classList.add('active');
+    document.getElementById('tab-'+t.dataset.tab).classList.remove('hidden');
+    if(t.dataset.tab==='overzicht') toonOverzicht();
+    if(t.dataset.tab==='klanten') toonKlanten();
+    if(t.dataset.tab==='invoer') toonLaatsteInvoer();
+  };
+});
+
+// ---------- HELPERS ----------
+function getISOWeek(date){
+  const d = new Date(date.getTime());
+  d.setHours(0,0,0,0);
+  d.setDate(d.getDate() + 4 - (d.getDay()||7));
+  const yearStart = new Date(d.getFullYear(),0,1);
+  return Math.ceil((((d-yearStart)/86400000)+1)/7);
+}
+function vulKlantSelects(){
+  const opts = klanten.map(k=>`<option value="${k.naam}">${k.naam}</option>`).join('');
+  document.getElementById('i-klant').innerHTML = '<option value="">-- kies klant --</option>'+opts;
+  document.getElementById('o-klant').innerHTML = '<option value="">-- kies klant --</option>'+opts;
+}
+function fmtDatum(iso){
+  const d = new Date(iso);
+  return d.toLocaleDateString('nl-NL',{day:'2-digit',month:'2-digit',year:'numeric'});
+}
+
+// ---------- INVOER ----------
+document.getElementById('i-datum').value = new Date().toISOString().slice(0,10);
+
+function opslaanInvoer(){
+  const klant = document.getElementById('i-klant').value;
+  const datum = document.getElementById('i-datum').value;
+  if(!klant){ document.getElementById('i-status').textContent = '❌ Kies een klant.'; return; }
+  if(!datum){ document.getElementById('i-status').textContent = '❌ Kies een datum.'; return; }
+
+  const item = {
+    id: Date.now(),
+    klant,
+    datum,
+    week: 'wk ' + getISOWeek(new Date(datum)),
+    bon: document.getElementById('i-bon').value.trim(),
+    cc: Number(document.getElementById('i-cc').value)||0,
+    platen: Number(document.getElementById('i-platen').value)||0,
+    opzet: Number(document.getElementById('i-opzet').value)||0,
+    opmerking: document.getElementById('i-opmerking').value.trim()
+  };
+  invoer.push(item);
+  bewaar('cc_invoer', invoer);
+
+  document.getElementById('i-status').textContent = '✅ Opgeslagen voor ' + klant;
+  document.getElementById('i-bon').value='';
+  document.getElementById('i-cc').value=0;
+  document.getElementById('i-platen').value=0;
+  document.getElementById('i-opzet').value=0;
+  document.getElementById('i-opmerking').value='';
+  toonLaatsteInvoer();
+}
+
+function toonLaatsteInvoer(){
+  const laatste = invoer.slice(-5).reverse();
+  const tbody = document.querySelector('#i-laatste tbody');
+  tbody.innerHTML = laatste.map(r=>
+    `<tr><td>${fmtDatum(r.datum)}</td><td>${r.klant}</td><td>${r.cc}/${r.platen}/${r.opzet}</td>
+     <td><button class="danger" style="padding:2px 6px;font-size:11px;" onclick="verwijderInvoer(${r.id})">x</button></td></tr>`
+  ).join('');
+}
+function verwijderInvoer(id){
+  invoer = invoer.filter(r=>r.id!==id);
+  bewaar('cc_invoer', invoer);
+  toonLaatsteInvoer();
+}
+
+// ---------- OVERZICHT ----------
+function toonOverzicht(){
+  const klant = document.getElementById('o-klant').value;
+  const tbody = document.querySelector('#o-tabel tbody');
+  tbody.innerHTML = '';
+  document.getElementById('o-klantinfo').textContent = '';
+  document.getElementById('o-totcc').textContent='CC: 0';
+  document.getElementById('o-totplaten').textContent='Platen: 0';
+  document.getElementById('o-totopzet').textContent='Opzet: 0';
+  if(!klant) return;
+
+  const k = klanten.find(x=>x.naam===klant);
+  if(k) document.getElementById('o-klantinfo').textContent = `${k.adres||''} ${k.woonplaats||''} · ${k.email||''}`;
+
+  let rows = invoer.filter(r=>r.klant===klant);
+  // sorteer: regels met saldo eerst, daarna op datum (nieuw->oud)
+  rows.sort((a,b)=>{
+    const sA = (Math.abs(a.cc)>0 || Math.abs(a.platen)>0);
+    const sB = (Math.abs(b.cc)>0 || Math.abs(b.platen)>0);
+    if(sA && !sB) return -1;
+    if(!sA && sB) return 1;
+    return new Date(b.datum) - new Date(a.datum);
+  });
+
+  let tcc=0, tpl=0, top=0;
+  rows.forEach(r=>{
+    tcc+=r.cc; tpl+=r.platen; top+=r.opzet;
+    tbody.innerHTML += `<tr><td>${fmtDatum(r.datum)}</td><td>${r.week}</td><td>${r.bon}</td>
+      <td>${r.cc}</td><td>${r.platen}</td><td>${r.opzet}</td><td>${r.opmerking||''}</td></tr>`;
+  });
+  document.getElementById('o-totcc').textContent='CC: '+tcc;
+  document.getElementById('o-totplaten').textContent='Platen: '+tpl;
+  document.getElementById('o-totopzet').textContent='Opzet: '+top;
+}
+
+// ---------- PDF ----------
+function exportPdf(){
+  const klant = document.getElementById('o-klant').value;
+  if(!klant){ alert('Kies eerst een klant.'); return; }
+  const k = klanten.find(x=>x.naam===klant) || {};
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+
+  doc.setFontSize(14);
+  doc.text('Fustoverzicht - ' + klant, 14, 16);
+  doc.setFontSize(10);
+  doc.text((k.adres||'') + ' ' + (k.woonplaats||''), 14, 23);
+  doc.text('Datum: ' + new Date().toLocaleDateString('nl-NL'), 14, 29);
+
+  let y = 40;
+  doc.setFontSize(11);
+  doc.text('Datum', 14, y);
+  doc.text('Wk', 50, y);
+  doc.text('Bon', 65, y);
+  doc.text('CC', 90, y);
+  doc.text('Platen', 110, y);
+  doc.text('Opzet', 135, y);
+  y+=2;
+  doc.line(14,y,180,y);
+  y+=6;
+
+  let rows = invoer.filter(r=>r.klant===klant);
+  rows.sort((a,b)=> new Date(b.datum)-new Date(a.datum));
+  let tcc=0, tpl=0, top=0;
+  rows.forEach(r=>{
+    tcc+=r.cc; tpl+=r.platen; top+=r.opzet;
+    doc.text(fmtDatum(r.datum), 14, y);
+    doc.text(r.week.replace('wk ',''), 50, y);
+    doc.text(String(r.bon||''), 65, y);
+    doc.text(String(r.cc), 90, y);
+    doc.text(String(r.platen), 110, y);
+    doc.text(String(r.opzet), 135, y);
+    y+=6;
+    if(y>270){ doc.addPage(); y=20; }
+  });
+  y+=4;
+  doc.line(14,y,180,y);
+  y+=6;
+  doc.setFontSize(12);
+  doc.text(`Totaal  CC: ${tcc}   Platen: ${tpl}   Opzet: ${top}`, 14, y);
+
+  doc.save('Fustoverzicht_' + klant + '.pdf');
+}
+
+// ---------- MAIL ----------
+function mailOverzicht(){
+  const klant = document.getElementById('o-klant').value;
+  if(!klant){ alert('Kies eerst een klant.'); return; }
+  const k = klanten.find(x=>x.naam===klant) || {};
+  if(!k.email){ alert('Geen e-mailadres bekend voor deze klant.'); return; }
+
+  const subject = encodeURIComponent('Fustoverzicht - ' + klant);
+  const body = encodeURIComponent(
+    `Beste ${klant},\n\nIn de bijlage vindt u het actuele overzicht (download eerst de PDF via de knop hiernaast en voeg deze toe).\n\nMet vriendelijke groet,\nVollebregt Cyclamen`
+  );
+  window.location.href = `mailto:${k.email}?subject=${subject}&body=${body}`;
+}
+
+// ---------- KLANTEN ----------
+function opslaanKlant(){
+  const naam = document.getElementById('k-naam').value.trim();
+  if(!naam){ document.getElementById('k-status').textContent='❌ Naam verplicht.'; return; }
+  klanten.push({
+    naam,
+    adres: document.getElementById('k-adres').value.trim(),
+    woonplaats: document.getElementById('k-woonplaats').value.trim(),
+    telefoon: document.getElementById('k-telefoon').value.trim(),
+    email: document.getElementById('k-email').value.trim()
+  });
+  bewaar('cc_klanten', klanten);
+  ['k-naam','k-adres','k-woonplaats','k-telefoon','k-email'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('k-status').textContent='✅ Toegevoegd.';
+  vulKlantSelects();
+  toonKlanten();
+}
+function verwijderKlant(naam){
+  if(!confirm('Klant "'+naam+'" verwijderen?')) return;
+  klanten = klanten.filter(k=>k.naam!==naam);
+  bewaar('cc_klanten', klanten);
+  vulKlantSelects();
+  toonKlanten();
+}
+function toonKlanten(){
+  document.getElementById('k-lijst').innerHTML = klanten.map(k=>
+    `<div class="card" style="padding:8px 10px;">
+       <b>${k.naam}</b> <span class="badge">${k.woonplaats||''}</span>
+       <div class="small">${k.email||''} ${k.telefoon||''}</div>
+       <div class="item-actions"><button class="danger" onclick="verwijderKlant('${k.naam}')">Verwijderen</button></div>
+     </div>`
+  ).join('') || '<div class="small">Nog geen klanten toegevoegd.</div>';
+}
+
+// ---------- INIT ----------
+vulKlantSelects();
+toonLaatsteInvoer();
+</script>
+</body>
+</html>
