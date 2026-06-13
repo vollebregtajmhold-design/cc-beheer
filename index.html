@@ -132,6 +132,9 @@
       <button onclick="exportPdf()">📄 PDF</button>
       <button class="secondary" onclick="mailOverzicht()">✉️ Mail</button>
     </div>
+
+    <hr style="border-color:var(--border); margin:14px 0;">
+    <button class="secondary" onclick="exportTotaalPdf()">📊 Totaaloverzicht alle klanten</button>
   </div>
 
   <!-- KLANTEN -->
@@ -376,24 +379,30 @@ function printBon(id){
 
   // toelichtingstekst naast de saldo-tabel
   doc.setFontSize(6.5);
+  const tabelBreedte = 28 + 16; // labelkolom + waardekolom
+  const tekstX = marge + tabelBreedte + 4;
+  const tekstW = (pageW - marge) - tekstX;
   const tekst = [
-    'Wilt u er voor zorgdragen dat het saldo binnen 5 werkdagen retour gebracht wordt,',
-    'of overgeboekt naar ons FH nummer: 2881.',
+    'Wilt u er voor zorgdragen dat het saldo binnen 5 werkdagen retour gebracht',
+    'wordt, of overgeboekt naar ons FH nummer: 2881.',
     'Na 5 werkdagen kunnen we kosten in rekening brengen.',
     'Positief is ons tegoed, negatief is uw tegoed.'
   ];
-  let ty = boxY + 5;
-  tekst.forEach(t=>{ doc.text(t, marge+62, ty); ty += 3.8; });
+  let ty = boxY + 4;
+  tekst.forEach(t=>{
+    doc.text(doc.splitTextToSize(t, tekstW), tekstX, ty);
+    ty += 3.6;
+  });
   doc.setFontSize(8);
 
   // saldo-tabel
   y = boxY;
   const saldoRows = [['CC', saldoCC], ['Platen', saldoPL], ['Opzetstukken', saldoOP]];
   saldoRows.forEach(([label,val])=>{
-    doc.rect(marge, y, 35, 5.5);
-    doc.rect(marge+35, y, 22, 5.5);
+    doc.rect(marge, y, 28, 5.5);
+    doc.rect(marge+28, y, 16, 5.5);
     doc.text(label, marge+2, y+4);
-    doc.text(String(val), marge+35+11, y+4, {align:'center'});
+    doc.text(String(val), marge+28+8, y+4, {align:'center'});
     y += 5.5;
   });
 
@@ -472,7 +481,7 @@ function exportPdf(){
   const marge = 14, pageW = 210, breedte = pageW - marge*2;
 
   // ---- Logo + ons bedrijf ----
-  doc.addImage(LOGO_BASE64, 'JPEG', marge, 8, 38.6, 22.4);
+  doc.addImage(LOGO_BASE64, 'JPEG', marge, 11.6, 38.6, 22.4);
   doc.setFontSize(11); doc.setFont(undefined,'bold');
   doc.text('P.J.J.Vollebregt BV', marge+44, 14);
   doc.setFont(undefined,'normal');
@@ -575,6 +584,64 @@ function exportPdf(){
   });
 
   doc.save('Fustoverzicht_' + klant + '.pdf');
+}
+
+// ---------- TOTAALOVERZICHT ALLE KLANTEN ----------
+function exportTotaalPdf(){
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit:'mm', format:'a4' });
+  const marge = 14, pageW = 210, breedte = pageW - marge*2;
+
+  doc.addImage(LOGO_BASE64, 'JPEG', marge, 8, 28, 16.3);
+  doc.setFontSize(15); doc.setFont(undefined,'bold');
+  doc.text('Totaaloverzicht saldi per klant', pageW/2 + 14, 17, {align:'center'});
+  doc.setFontSize(9); doc.setFont(undefined,'normal');
+  doc.text('Datum: ' + new Date().toLocaleDateString('nl-NL'), pageW-marge, 28, {align:'right'});
+
+  let y = 34;
+  doc.line(marge, y, pageW-marge, y);
+  y += 2;
+
+  const kol = [
+    {label:'Klant', w: breedte*0.40},
+    {label:'CC', w: breedte*0.20},
+    {label:'Platen', w: breedte*0.20},
+    {label:'Opzetstukken', w: breedte*0.20}
+  ];
+  let xpos = []; let xc = marge;
+  kol.forEach(c=>{ xpos.push(xc); xc += c.w; });
+
+  doc.setFillColor(216,216,216);
+  doc.rect(marge, y, breedte, 9, 'F');
+  doc.setFont(undefined,'bold'); doc.setFontSize(11);
+  doc.text('Klant', xpos[0]+2, y+6);
+  doc.text('CC', xpos[1]+kol[1].w/2, y+6, {align:'center'});
+  doc.text('Platen', xpos[2]+kol[2].w/2, y+6, {align:'center'});
+  doc.text('Opzetstukken', xpos[3]+kol[3].w/2, y+6, {align:'center'});
+  y += 9;
+
+  const totalen = klanten.map(k=>{
+    let cc=0, pl=0, op=0;
+    invoer.filter(r=>r.klant===k.naam).forEach(r=>{ cc+=r.cc; pl+=r.platen; op+=r.opzet; });
+    return { naam:k.naam, woonplaats:k.woonplaats, cc, pl, op };
+  });
+
+  doc.setFont(undefined,'normal'); doc.setFontSize(10);
+  totalen.forEach(t=>{
+    if(y > 280){ doc.addPage(); y = 20; }
+    const rh = 7;
+    pdfKleurCel(doc, t.cc, xpos[1], y, kol[1].w, rh);
+    pdfKleurCel(doc, t.pl, xpos[2], y, kol[2].w, rh);
+    pdfKleurCel(doc, t.op, xpos[3], y, kol[3].w, rh);
+
+    doc.text(t.naam + (t.woonplaats ? '  (' + t.woonplaats + ')' : ''), xpos[0]+2, y+5);
+    doc.text(String(t.cc), xpos[1]+kol[1].w/2, y+5, {align:'center'});
+    doc.text(String(t.pl), xpos[2]+kol[2].w/2, y+5, {align:'center'});
+    doc.text(String(t.op), xpos[3]+kol[3].w/2, y+5, {align:'center'});
+    y += rh;
+  });
+
+  doc.save('Totaaloverzicht_saldi_' + new Date().toISOString().slice(0,10) + '.pdf');
 }
 
 // kleurt een celvlak groen (positief) of rood (negatief)
