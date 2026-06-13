@@ -89,6 +89,9 @@
       </div>
     </div>
 
+    <label>Transporteur</label>
+    <input type="text" id="i-transporteur" placeholder="bv. Hogenboom">
+
     <label>Opmerking</label>
     <textarea id="i-opmerking" rows="2"></textarea>
 
@@ -224,6 +227,7 @@ function opslaanInvoer(){
     datum,
     week: 'wk ' + getISOWeek(new Date(datum)),
     bon: document.getElementById('i-bon').value.trim(),
+    transporteur: document.getElementById('i-transporteur').value.trim(),
     cc: Number(document.getElementById('i-cc').value)||0,
     platen: Number(document.getElementById('i-platen').value)||0,
     opzet: Number(document.getElementById('i-opzet').value)||0,
@@ -247,6 +251,7 @@ function opslaanInvoer(){
   document.getElementById('i-platen').value=0;
   document.getElementById('i-opzet').value=0;
   document.getElementById('i-opmerking').value='';
+  document.getElementById('i-transporteur').value='';
   zetBonnummer();
   toonLaatsteInvoer();
 }
@@ -262,6 +267,7 @@ function bewerkInvoer(id){
   document.getElementById('i-platen').value = r.platen;
   document.getElementById('i-opzet').value = r.opzet;
   document.getElementById('i-opmerking').value = r.opmerking;
+  document.getElementById('i-transporteur').value = r.transporteur||'';
   document.querySelector('#tab-invoer button').textContent = '💾 Wijziging opslaan';
   document.getElementById('i-klant').scrollIntoView({behavior:'smooth'});
 }
@@ -272,26 +278,107 @@ function printBon(id){
   const k = klanten.find(x=>x.naam===r.klant) || {};
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF();
+  const pageW = 210, marge = 12, breedte = pageW - marge*2;
 
-  doc.setFontSize(16);
-  doc.text('Bon ' + r.bon, 14, 18);
-  doc.setFontSize(11);
-  doc.text('Klant: ' + r.klant, 14, 30);
-  doc.text((k.adres||'') + ' ' + (k.woonplaats||''), 14, 36);
-  doc.text('Datum: ' + fmtDatum(r.datum) + '  (' + r.week + ')', 14, 42);
+  // ---- Kopregel ----
+  doc.setFontSize(26);
+  doc.setFont(undefined,'bold');
+  doc.text('Vollebregt Cyclamen', pageW/2, 20, {align:'center'});
+  doc.setLineWidth(0.6);
+  doc.line(marge, 28, pageW-marge, 28);
 
-  let y = 56;
-  doc.setFontSize(12);
-  doc.text('CC: ' + r.cc, 14, y); y+=8;
-  doc.text('Platen: ' + r.platen, 14, y); y+=8;
-  doc.text('Opzet: ' + r.opzet, 14, y); y+=8;
+  // ---- ID / Datum / Bon ----
+  let y = 36;
+  doc.setFontSize(11); doc.setFont(undefined,'normal');
+  doc.text('ID:', marge, y);
+  doc.setFont(undefined,'bold');
+  doc.text(String(r.id), marge+14, y);
+  doc.setFont(undefined,'normal');
+  doc.text(fmtDatum(r.datum), pageW/2, y, {align:'center'});
+  doc.text('Bon: ' + (r.bon||''), pageW-marge, y, {align:'right'});
+  y += 4;
+  doc.line(marge, y, pageW-marge, y);
+
+  // ---- Afleveradres ----
+  y += 8;
+  doc.text('Afleveradres:', marge, y);
+  y += 8;
+  doc.setFontSize(15); doc.setFont(undefined,'bold');
+  doc.text(r.klant, marge, y);
+  doc.setFontSize(11); doc.setFont(undefined,'normal');
+  doc.text('Transporteur: ' + (r.transporteur||'-'), pageW-marge, y, {align:'right'});
+  y += 7;
+  doc.text(k.adres||'', marge, y);
+  doc.text('Tel:', pageW/2, y);
+  y += 6;
+  doc.text(k.woonplaats||'', marge, y);
+  doc.text(k.telefoon||'', pageW/2, y);
+  y += 6;
+  doc.line(marge, y, pageW-marge, y);
+
+  // ---- Tabel CC / Platen / Opzetstuk ----
+  y += 2;
+  const breedte2 = breedte;
+  const c1 = marge + breedte2*0.18;
+  const c2 = marge + breedte2*0.46;
+  const c3 = marge + breedte2*0.72;
+  const c4 = marge + breedte2*0.96;
+  doc.setFont(undefined,'bold');
+  doc.text('cc', c2, y+8, {align:'center'});
+  doc.text('platen', c3, y+8, {align:'center'});
+  doc.text('opzetstuk', c4, y+8, {align:'center'});
+  y += 12;
+  doc.line(marge, y, pageW-marge, y);
+  y += 9;
+  doc.setFontSize(14);
+  doc.text('Aantallen:', marge, y);
+  doc.text(String(r.cc), c2, y, {align:'center'});
+  doc.text(String(r.platen), c3, y, {align:'center'});
+  doc.text(String(r.opzet), c4, y, {align:'center'});
+  doc.setFontSize(11); doc.setFont(undefined,'normal');
+  y += 6;
+  doc.line(marge, y, pageW-marge, y);
+
+  // ---- Opmerking ----
+  y += 10;
+  doc.text('Opmerking:', marge, y);
   if(r.opmerking){
-    y+=4;
-    doc.setFontSize(10);
-    doc.text('Opmerking: ' + r.opmerking, 14, y);
+    y += 6;
+    doc.text(doc.splitTextToSize(r.opmerking, breedte), marge, y);
   }
+  y += 14;
+  doc.line(marge, y, pageW-marge, y);
 
-  doc.save('Bon_' + r.bon + '_' + r.klant + '.pdf');
+  // ---- Actueel Nieuw Saldo ----
+  let rows = invoer.filter(x=>x.klant===r.klant && new Date(x.datum) <= new Date(r.datum));
+  let saldoCC=0, saldoPL=0, saldoOP=0;
+  rows.forEach(x=>{ saldoCC+=x.cc; saldoPL+=x.platen; saldoOP+=x.opzet; });
+
+  y += 8;
+  doc.setFont(undefined,'bold');
+  doc.text('Actueel Nieuw Saldo', marge, y);
+  doc.setFont(undefined,'normal');
+  const tekst = [
+    'Wilt u er voor zorgdragen dat het saldo binnen 5 werkdagen retour gebracht worden,',
+    'of is overgeboekt naar ons FH nummer: 2881',
+    '(Na 5 werkdagen kunnen we kosten in rekening brengen)',
+    '(positief is ons tegoed, negatief is uw tegoed)'
+  ];
+  doc.setFontSize(9);
+  tekst.forEach((t,i)=> doc.text(t, marge+65, y - 2 + i*5));
+  doc.setFontSize(11);
+
+  y += 6;
+  const saldoRows = [['CC', saldoCC], ['Platen', saldoPL], ['Opzetstukken', saldoOP]];
+  saldoRows.forEach(([label,val])=>{
+    doc.rect(marge, y, 50, 7);
+    doc.rect(marge+50, y, 30, 7);
+    doc.text(label, marge+2, y+5);
+    doc.text(String(val), marge+50+15, y+5, {align:'center'});
+    y += 7;
+  });
+
+  doc.save('Bon_' + (r.bon||r.id) + '_' + r.klant + '.pdf');
 }
 
 function toonLaatsteInvoer(){
