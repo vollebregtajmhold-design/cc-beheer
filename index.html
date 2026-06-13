@@ -26,8 +26,13 @@
   header{padding:14px 16px; border-bottom:1px solid var(--border); position:sticky; top:0; background:var(--bg); z-index:10;}
   h1{margin:0; font-size:18px;}
   .tabs{display:flex; gap:6px; padding:10px 16px 0;}
-  .tab{flex:1; text-align:center; padding:8px 4px; border-radius:8px 8px 0 0; background:var(--card); color:var(--muted); cursor:pointer; font-size:13px; border:1px solid var(--border); border-bottom:none;}
-  .tab.active{color:var(--text); background:var(--bg); border-bottom:2px solid var(--bg); position:relative; top:1px;}
+  .tab{flex:1; text-align:center; padding:10px 4px; border-radius:8px 8px 0 0; background:var(--border); color:var(--text); cursor:pointer; font-size:13px; font-weight:600; border:1px solid var(--border); border-bottom:none; opacity:0.6;}
+  .tab.active{color:#fff; opacity:1; position:relative; top:1px;}
+  .tab[data-tab="invoer"]{ background:#4f8cff; color:#fff; }
+  .tab[data-tab="overzicht"]{ background:#4caf50; color:#fff; }
+  .tab[data-tab="klanten"]{ background:#ff9800; color:#fff; }
+  .tab.active{ opacity:1; box-shadow:0 -2px 6px rgba(0,0,0,0.15); transform:translateY(0); }
+  .tab:not(.active){ opacity:0.55; }
   .content{padding:16px; max-width:700px; margin:0 auto;}
   .card{background:var(--card); border:1px solid var(--border); border-radius:10px; padding:14px; margin-bottom:12px;}
   label{display:block; font-size:12px; color:var(--muted); margin:8px 0 4px;}
@@ -462,47 +467,118 @@ function exportPdf(){
   if(!klant){ alert('Kies eerst een klant.'); return; }
   const k = klanten.find(x=>x.naam===klant) || {};
   const { jsPDF } = window.jspdf;
-  const doc = new jsPDF();
+  const doc = new jsPDF({ unit:'mm', format:'a4' });
+  const marge = 14, pageW = 210, breedte = pageW - marge*2;
 
-  doc.setFontSize(14);
-  doc.text('Fustoverzicht - ' + klant, 14, 16);
-  doc.setFontSize(10);
-  doc.text((k.adres||'') + ' ' + (k.woonplaats||''), 14, 23);
-  doc.text('Datum: ' + new Date().toLocaleDateString('nl-NL'), 14, 29);
+  // ---- Logo + ons bedrijf ----
+  doc.addImage(LOGO_BASE64, 'JPEG', marge, 10, 30, 17.4);
+  doc.setFontSize(11); doc.setFont(undefined,'bold');
+  doc.text('P.J.J.Vollebregt BV', marge+36, 14);
+  doc.setFont(undefined,'normal');
+  doc.text('Legmeerdijk 207', marge+36, 19);
+  doc.text('Aalsmeer', marge+36, 24);
+  doc.text('E-mail        youngplantsvollebregt@gmail.com', marge+36, 29);
+  doc.text('Whatsapp    06 15001022', marge+36, 34);
 
-  let y = 40;
-  doc.setFontSize(11);
-  doc.text('Datum', 14, y);
-  doc.text('Wk', 50, y);
-  doc.text('Bon', 65, y);
-  doc.text('CC', 90, y);
-  doc.text('Platen', 110, y);
-  doc.text('Opzet', 135, y);
-  y+=2;
-  doc.line(14,y,180,y);
-  y+=6;
+  // ---- Klant / datum / saldo-uitleg ----
+  let y = 42;
+  doc.setLineWidth(0.4);
+  doc.setFontSize(11); doc.setFont(undefined,'bold');
+  doc.text(klant, marge, y);
+  doc.setFont(undefined,'normal');
+  doc.text('Datum: ' + new Date().toLocaleDateString('nl-NL'), pageW-marge, y, {align:'right'});
+  y += 5;
+  doc.setFontSize(9);
+  doc.text(k.woonplaats||'', marge, y);
+  doc.text('Groen is ons tegoed', pageW-marge, y, {align:'right'});
+  y += 5;
+  doc.text(k.email||'', marge, y);
+  doc.text('Saldo kunt u overboeken naar ons FH nr: 2881', pageW/2, y, {align:'center'});
+  doc.text('Rood is uw tegoed', pageW-marge, y, {align:'right'});
+  y += 4;
+  doc.line(marge, y, pageW-marge, y);
 
-  let rows = invoer.filter(r=>r.klant===klant);
-  rows.sort((a,b)=> new Date(b.datum)-new Date(a.datum));
-  let tcc=0, tpl=0, top=0;
-  rows.forEach(r=>{
-    tcc+=r.cc; tpl+=r.platen; top+=r.opzet;
-    doc.text(fmtDatum(r.datum), 14, y);
-    doc.text(r.week.replace('wk ',''), 50, y);
-    doc.text(String(r.bon||''), 65, y);
-    doc.text(String(r.cc), 90, y);
-    doc.text(String(r.platen), 110, y);
-    doc.text(String(r.opzet), 135, y);
-    y+=6;
-    if(y>270){ doc.addPage(); y=20; }
+  // ---- Tabel kolommen ----
+  const kol = [
+    {label:'Datum', w:22},
+    {label:'',      w:14}, // week
+    {label:'ID-nr', w:18},
+    {label:'cc-karren', w:26},
+    {label:'platen', w:26},
+    {label:'opzetstukken', w:28},
+    {label:'Bon', w:16},
+    {label:'Opmerking', w:30}
+  ];
+  let xpos = [];
+  let xc = marge;
+  kol.forEach(c=>{ xpos.push(xc); xc += c.w; });
+
+  // ---- Data + sortering (saldo eerst) ----
+  let rows = invoer.filter(r=>r.klant===klant).map(r=>({...r}));
+  rows.sort((a,b)=>{
+    const sA = (Math.abs(a.cc)>0 || Math.abs(a.platen)>0);
+    const sB = (Math.abs(b.cc)>0 || Math.abs(b.platen)>0);
+    if(sA && !sB) return -1;
+    if(!sA && sB) return 1;
+    return new Date(b.datum) - new Date(a.datum);
   });
-  y+=4;
-  doc.line(14,y,180,y);
-  y+=6;
-  doc.setFontSize(12);
-  doc.text(`Totaal  CC: ${tcc}   Platen: ${tpl}   Opzet: ${top}`, 14, y);
+  let tcc=0, tpl=0, top=0;
+  rows.forEach(r=>{ tcc+=r.cc; tpl+=r.platen; top+=r.opzet; });
+
+  // ---- Tabel header (grijze balk) ----
+  y += 2;
+  doc.setFillColor(216,216,216);
+  doc.rect(marge, y, breedte, 9, 'F');
+  doc.setFont(undefined,'bold'); doc.setFontSize(11);
+  doc.text('Datum', xpos[0]+2, y+6);
+  doc.text('ID-nr', xpos[2]+2, y+6);
+  doc.text('cc-karren', xpos[3]+kol[3].w/2, y+6, {align:'center'});
+  doc.text('platen', xpos[4]+kol[4].w/2, y+6, {align:'center'});
+  doc.text('opzetstukken', xpos[5]+kol[5].w/2, y+6, {align:'center'});
+  doc.text('Bon', xpos[6]+2, y+6);
+  doc.text('Opmerking', xpos[7]+2, y+6);
+  y += 9;
+
+  // ---- Huidig Saldo regel ----
+  doc.setFont(undefined,'bold'); doc.setFontSize(10);
+  doc.text('Huidig Saldo', xpos[0]+2, y+6);
+  pdfKleurCel(doc, tcc, xpos[3], y, kol[3].w, 8);
+  pdfKleurCel(doc, tpl, xpos[4], y, kol[4].w, 8);
+  pdfKleurCel(doc, top, xpos[5], y, kol[5].w, 8);
+  doc.setFont(undefined,'bold');
+  doc.text(String(tcc), xpos[3]+kol[3].w/2, y+6, {align:'center'});
+  doc.text(String(tpl), xpos[4]+kol[4].w/2, y+6, {align:'center'});
+  doc.text(String(top), xpos[5]+kol[5].w/2, y+6, {align:'center'});
+  y += 12;
+
+  // ---- Data rijen ----
+  doc.setFont(undefined,'normal'); doc.setFontSize(9);
+  rows.forEach(r=>{
+    if(y > 280){ doc.addPage(); y = 20; }
+    const rh = 7;
+    pdfKleurCel(doc, r.cc, xpos[3], y, kol[3].w, rh);
+    pdfKleurCel(doc, r.platen, xpos[4], y, kol[4].w, rh);
+    if(r.opzet) pdfKleurCel(doc, r.opzet, xpos[5], y, kol[5].w, rh);
+
+    doc.text(fmtDatum(r.datum) + ' ' + r.week, xpos[0], y+5);
+    doc.text(String(r.id||''), xpos[2], y+5);
+    doc.text(r.cc ? String(r.cc) : '', xpos[3]+kol[3].w/2, y+5, {align:'center'});
+    doc.text(r.platen ? String(r.platen) : '', xpos[4]+kol[4].w/2, y+5, {align:'center'});
+    doc.text(r.opzet ? String(r.opzet) : '', xpos[5]+kol[5].w/2, y+5, {align:'center'});
+    doc.text(r.bon ? String(r.bon) : '', xpos[6], y+5);
+    doc.text(r.opmerking || (r.transporteur||''), xpos[7], y+5);
+    y += rh;
+  });
 
   doc.save('Fustoverzicht_' + klant + '.pdf');
+}
+
+// kleurt een celvlak groen (positief) of rood (negatief)
+function pdfKleurCel(doc, val, x, y, w, h){
+  if(val > 0) doc.setFillColor(200,230,201);
+  else if(val < 0) doc.setFillColor(255,205,210);
+  else return;
+  doc.rect(x, y, w, h, 'F');
 }
 
 // ---------- MAIL ----------
