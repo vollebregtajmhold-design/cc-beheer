@@ -60,7 +60,10 @@
 <header>
   <div style="display:flex; justify-content:space-between; align-items:center;">
     <h1>📦 CC Beheer 2026</h1>
-    <button class="secondary" style="margin:0; padding:6px 10px;" onclick="toggleThema()">🌙/☀️</button>
+    <div style="display:flex; align-items:center; gap:8px;">
+      <span id="sync-indicator" class="small"></span>
+      <button class="secondary" style="margin:0; padding:6px 10px;" onclick="toggleThema()">🌙/☀️</button>
+    </div>
   </div>
 </header>
 
@@ -182,11 +185,11 @@
     <hr style="border-color:var(--border); margin:14px 0;">
     <div class="small" style="font-weight:600; margin-bottom:6px;">☁️ Synchroniseren tussen apparaten</div>
     <div class="small" style="margin-bottom:8px;">
-      Werkt via dezelfde Google-koppeling als e-mail. Klik op je ene apparaat op "Naar cloud", en op je andere apparaat op "Van cloud".
+      Gaat automatisch: na elke wijziging wordt opgeslagen in de cloud, en bij openen van de app wordt de nieuwste versie opgehaald. Werkt zodra de Webapp-URL hieronder is ingevuld.
     </div>
     <div class="row">
-      <button class="secondary" onclick="syncUpload()">⬆️ Naar cloud</button>
-      <button class="secondary" onclick="syncDownload()">⬇️ Van cloud</button>
+      <button class="secondary" onclick="autoSyncDownloadBijOpstart()">⬇️ Nu vernieuwen</button>
+      <button class="secondary" onclick="autoSyncUpload()">⬆️ Nu opslaan</button>
     </div>
     <div id="sync-status" class="small" style="margin-top:6px;"></div>
 
@@ -232,6 +235,74 @@ function volgendInvoerId(){
 // ---------- DATA ----------
 function laad(key){ try{ return JSON.parse(localStorage.getItem(key)) || []; }catch(e){ return []; } }
 function bewaar(key, data){ localStorage.setItem(key, JSON.stringify(data)); }
+
+// Bewaart lokaal én plant een automatische cloud-sync (debounced)
+let _syncTimer = null;
+function bewaarEnSync(key, data){
+  bewaar(key, data);
+  if(_syncTimer) clearTimeout(_syncTimer);
+  _syncTimer = setTimeout(autoSyncUpload, 1200);
+}
+
+function autoSyncUpload(){
+  const cfg = laadEmailConfig();
+  if(!cfg.url) return; // nog niet geconfigureerd, niets doen
+  const payload = {
+    klanten: laad('cc_klanten'),
+    invoer: laad('cc_invoer'),
+    verzonden: laad('cc_verzonden')
+  };
+  toonSyncIndicator('⏳ Synchroniseren...');
+  fetch(cfg.url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify({ action: 'save', payload })
+  }).then(res=>res.json())
+    .then(json=>{
+      toonSyncIndicator(json.ok ? '✅ Gesynchroniseerd' : '❌ Sync mislukt');
+    })
+    .catch(()=>{ toonSyncIndicator('❌ Sync mislukt (verbinding)'); });
+}
+
+function toonSyncIndicator(tekst){
+  const el = document.getElementById('sync-indicator');
+  const el2 = document.getElementById('sync-status');
+  if(el) el.textContent = tekst;
+  if(el2) el2.textContent = tekst;
+  if(tekst.indexOf('✅')===0){
+    setTimeout(()=>{
+      if(el && el.textContent===tekst) el.textContent='';
+      if(el2 && el2.textContent===tekst) el2.textContent='';
+    }, 3000);
+  }
+}
+
+// Bij opstart: nieuwste gegevens uit de cloud ophalen (indien geconfigureerd)
+function autoSyncDownloadBijOpstart(){
+  const cfg = laadEmailConfig();
+  if(!cfg.url) return;
+  toonSyncIndicator('⏳ Ophalen...');
+  fetch(cfg.url + '?action=load')
+    .then(res=>res.json())
+    .then(json=>{
+      if(json.ok && json.payload){
+        const p = json.payload;
+        if(p.klanten) bewaar('cc_klanten', p.klanten);
+        if(p.invoer) bewaar('cc_invoer', p.invoer);
+        if(p.verzonden) bewaar('cc_verzonden', p.verzonden);
+        klanten = laad('cc_klanten');
+        invoer = laad('cc_invoer');
+        vulKlantSelects();
+        toonLaatsteInvoer();
+        toonOverzicht();
+        toonVerzendlijst();
+        toonSyncIndicator('✅ Bijgewerkt');
+      } else {
+        toonSyncIndicator('');
+      }
+    })
+    .catch(()=>{ toonSyncIndicator(''); });
+}
 
 let klanten = laad('cc_klanten');
 let invoer  = laad('cc_invoer');
@@ -303,7 +374,7 @@ function opslaanInvoer(){
     document.getElementById('i-status').textContent = '✅ Opgeslagen voor ' + klant;
   }
 
-  bewaar('cc_invoer', invoer);
+  bewaarEnSync('cc_invoer', invoer);
   document.getElementById('i-cc').value=0;
   document.getElementById('i-platen').value=0;
   document.getElementById('i-opzet').value=0;
@@ -464,7 +535,7 @@ function toonLaatsteInvoer(){
 }
 function verwijderInvoer(id){
   invoer = invoer.filter(r=>r.id!==id);
-  bewaar('cc_invoer', invoer);
+  bewaarEnSync('cc_invoer', invoer);
   toonLaatsteInvoer();
 }
 
@@ -775,14 +846,14 @@ function logVerzending(klant, email){
     datum: nu.toISOString().slice(0,10),
     tijd: nu.toLocaleTimeString('nl-NL', {hour:'2-digit', minute:'2-digit'})
   });
-  bewaar('cc_verzonden', lijst);
+  bewaarEnSync('cc_verzonden', lijst);
   toonVerzendlijst();
 }
 
 function verwijderVerzending(id){
   let lijst = laad('cc_verzonden');
   lijst = lijst.filter(v=>v.id!==id);
-  bewaar('cc_verzonden', lijst);
+  bewaarEnSync('cc_verzonden', lijst);
   toonVerzendlijst();
 }
 
@@ -816,53 +887,6 @@ function vulEmailConfigVelden(){
 }
 
 // ---------- SYNC: CLOUD VIA GOOGLE APPS SCRIPT ----------
-function syncUpload(){
-  const cfg = laadEmailConfig();
-  const status = document.getElementById('sync-status');
-  if(!cfg.url){ alert('Vul eerst de Webapp-URL in bij E-mail instellingen.'); return; }
-
-  const payload = {
-    klanten: laad('cc_klanten'),
-    invoer: laad('cc_invoer'),
-    verzonden: laad('cc_verzonden')
-  };
-
-  if(status) status.textContent = '⏳ Versturen naar cloud...';
-  fetch(cfg.url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-    body: JSON.stringify({ action: 'save', payload })
-  }).then(res=>res.json())
-    .then(json=>{
-      if(status) status.textContent = json.ok ? '✅ Geüpload naar cloud.' : '❌ Mislukt: ' + json.error;
-    })
-    .catch(()=>{ if(status) status.textContent = '❌ Versturen mislukt (verbinding).'; });
-}
-
-function syncDownload(){
-  const cfg = laadEmailConfig();
-  const status = document.getElementById('sync-status');
-  if(!cfg.url){ alert('Vul eerst de Webapp-URL in bij E-mail instellingen.'); return; }
-
-  if(status) status.textContent = '⏳ Ophalen uit cloud...';
-  fetch(cfg.url + '?action=load')
-    .then(res=>res.json())
-    .then(json=>{
-      if(!json.ok || !json.payload){
-        if(status) status.textContent = 'ℹ️ Nog niets in de cloud. Klik eerst op "Naar cloud" op je andere apparaat.';
-        return;
-      }
-      if(!confirm('Huidige gegevens op dit apparaat overschrijven met de cloud-versie?')) return;
-      const p = json.payload;
-      if(p.klanten) bewaar('cc_klanten', p.klanten);
-      if(p.invoer) bewaar('cc_invoer', p.invoer);
-      if(p.verzonden) bewaar('cc_verzonden', p.verzonden);
-      if(status) status.textContent = '✅ Opgehaald. Pagina wordt vernieuwd.';
-      setTimeout(()=>location.reload(), 800);
-    })
-    .catch(()=>{ if(status) status.textContent = '❌ Ophalen mislukt (verbinding).'; });
-}
-
 // ---------- SYNC: BACKUP EXPORT/IMPORT ----------
 function exportBackup(){
   const data = {
@@ -920,7 +944,7 @@ function opslaanKlant(){
     if(idx>-1) klanten[idx] = data;
     if(bewerkKlantNaam !== naam){
       invoer.forEach(r=>{ if(r.klant===bewerkKlantNaam) r.klant = naam; });
-      bewaar('cc_invoer', invoer);
+      bewaarEnSync('cc_invoer', invoer);
     }
     document.getElementById('k-status').textContent='✅ Gewijzigd.';
     bewerkKlantNaam = null;
@@ -930,7 +954,7 @@ function opslaanKlant(){
     document.getElementById('k-status').textContent='✅ Toegevoegd.';
   }
 
-  bewaar('cc_klanten', klanten);
+  bewaarEnSync('cc_klanten', klanten);
   ['k-naam','k-adres','k-woonplaats','k-telefoon','k-email','k-transporteur'].forEach(id=>document.getElementById(id).value='');
   vulKlantSelects();
   toonKlanten();
@@ -952,7 +976,7 @@ function bewerkKlant(naam){
 function verwijderKlant(naam){
   if(!confirm('Klant "'+naam+'" verwijderen?')) return;
   klanten = klanten.filter(k=>k.naam!==naam);
-  bewaar('cc_klanten', klanten);
+  bewaarEnSync('cc_klanten', klanten);
   vulKlantSelects();
   toonKlanten();
 }
@@ -975,6 +999,7 @@ function toonKlanten(){
 // ---------- INIT ----------
 vulKlantSelects();
 toonLaatsteInvoer();
+autoSyncDownloadBijOpstart();
 </script>
 </body>
 </html>
