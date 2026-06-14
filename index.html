@@ -25,14 +25,9 @@
   body{margin:0; background:var(--bg); color:var(--text); padding-bottom:70px;}
   header{padding:14px 16px; border-bottom:1px solid var(--border); position:sticky; top:0; background:var(--bg); z-index:10;}
   h1{margin:0; font-size:18px;}
-  .tabs{display:flex; gap:6px; padding:10px 16px 0;}
-  .tab{flex:1; text-align:center; padding:10px 4px; border-radius:8px 8px 0 0; background:var(--border); color:var(--text); cursor:pointer; font-size:13px; font-weight:600; border:1px solid var(--border); border-bottom:none; opacity:0.6;}
-  .tab.active{color:#fff; opacity:1; position:relative; top:1px;}
-  .tab[data-tab="invoer"]{ background:#4f8cff; color:#fff; }
-  .tab[data-tab="overzicht"]{ background:#4caf50; color:#fff; }
-  .tab[data-tab="klanten"]{ background:#ff9800; color:#fff; }
-  .tab.active{ opacity:1; box-shadow:0 -2px 6px rgba(0,0,0,0.15); transform:translateY(0); }
-  .tab:not(.active){ opacity:0.55; }
+  .tabs{display:flex; gap:6px; padding:10px 16px; max-width:700px; margin:0 auto; position:sticky; top:52px; background:var(--bg); z-index:9;}
+  .tab{flex:1; text-align:center; padding:10px 4px; border-radius:8px; background:var(--accent); color:#fff; cursor:pointer; font-size:13px; font-weight:600; border:none; opacity:0.55;}
+  .tab.active{opacity:1; box-shadow:0 2px 6px rgba(0,0,0,0.15);}
   .content{padding:16px; max-width:700px; margin:0 auto;}
   .card{background:var(--card); border:1px solid var(--border); border-radius:10px; padding:14px; margin-bottom:12px;}
   label{display:block; font-size:12px; color:var(--muted); margin:8px 0 4px;}
@@ -70,7 +65,7 @@
 <div class="tabs">
   <div class="tab active" data-tab="invoer">Invoer</div>
   <div class="tab" data-tab="overzicht">Overzicht</div>
-  <div class="tab" data-tab="klanten">Klanten</div>
+  <div class="tab" data-tab="klanten">Instellingen</div>
 </div>
 
 <div class="content">
