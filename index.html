@@ -42,7 +42,20 @@
   #o-tabel{table-layout:fixed;}
   #o-tabel th, #o-tabel td{text-align:center; overflow:hidden; text-overflow:ellipsis;}
   #o-tabel th:nth-child(1), #o-tabel td:nth-child(1),
-  #o-tabel th:nth-child(7), #o-tabel td:nth-child(7){text-align:left;}
+  #o-tabel th:nth-child(7), #o-tabel td:nth-child(7){text-align:left; white-space:normal;}
+  /* Overzicht per klant: Datum, Wk, Bon, CC, Platen, Opzet, Opm. */
+  #o-tabel.modus-klant th:nth-child(1), #o-tabel.modus-klant td:nth-child(1){width:15%;}
+  #o-tabel.modus-klant th:nth-child(2), #o-tabel.modus-klant td:nth-child(2){width:8%;}
+  #o-tabel.modus-klant th:nth-child(3), #o-tabel.modus-klant td:nth-child(3){width:9%;}
+  #o-tabel.modus-klant th:nth-child(4), #o-tabel.modus-klant td:nth-child(4){width:9%;}
+  #o-tabel.modus-klant th:nth-child(5), #o-tabel.modus-klant td:nth-child(5){width:9%;}
+  #o-tabel.modus-klant th:nth-child(6), #o-tabel.modus-klant td:nth-child(6){width:9%;}
+  #o-tabel.modus-klant th:nth-child(7), #o-tabel.modus-klant td:nth-child(7){width:41%;}
+  /* Totaaloverzicht: Klant, CC, Platen, Opzetstukken */
+  #o-tabel.modus-totaal th:nth-child(1), #o-tabel.modus-totaal td:nth-child(1){width:46%; text-align:left;}
+  #o-tabel.modus-totaal th:nth-child(2), #o-tabel.modus-totaal td:nth-child(2),
+  #o-tabel.modus-totaal th:nth-child(3), #o-tabel.modus-totaal td:nth-child(3),
+  #o-tabel.modus-totaal th:nth-child(4), #o-tabel.modus-totaal td:nth-child(4){width:18%;}
   th{color:var(--muted); font-weight:500;}
   .totals{display:flex; justify-content:space-between; font-weight:600; margin-top:8px; padding-top:8px; border-top:1px solid var(--border);}
   .hidden{display:none;}
@@ -500,19 +513,20 @@ function toonOverzicht(){
 
   if(klant === '__totaal__'){
     // ---- Totaaloverzicht alle klanten op het scherm ----
-    thead.innerHTML = '<th>Klant</th><th>Woonplaats</th><th>CC</th><th>Platen</th><th>Opzetstukken</th>';
+    document.getElementById('o-tabel').className = 'modus-totaal';
+    thead.innerHTML = '<th>Klant</th><th>CC</th><th>Platen</th><th>Opzetstukken</th>';
     acties.style.display = 'none';
 
     const totalen = [...klanten].sort((a,b)=>a.naam.localeCompare(b.naam,'nl')).map(k=>{
       let cc=0, pl=0, op=0;
       invoer.filter(r=>r.klant===k.naam).forEach(r=>{ cc+=r.cc; pl+=r.platen; op+=r.opzet; });
-      return { naam:k.naam, woonplaats:k.woonplaats, cc, pl, op };
+      return { naam:k.naam, cc, pl, op };
     });
 
     let tcc=0, tpl=0, top=0;
     totalen.forEach(t=>{
       tcc+=t.cc; tpl+=t.pl; top+=t.op;
-      tbody.innerHTML += `<tr><td>${t.naam}</td><td>${t.woonplaats||''}</td>
+      tbody.innerHTML += `<tr><td>${t.naam}</td>
         <td style="${kleurCel(t.cc)}">${t.cc}</td>
         <td style="${kleurCel(t.pl)}">${t.pl}</td>
         <td style="${kleurCel(t.op)}">${t.op}</td></tr>`;
@@ -524,6 +538,7 @@ function toonOverzicht(){
   }
 
   // ---- Normaal: per klant ----
+  document.getElementById('o-tabel').className = 'modus-klant';
   thead.innerHTML = '<th>Datum</th><th>Wk</th><th>Bon</th><th>CC</th><th>Platen</th><th>Opzet</th><th>Opm.</th>';
   acties.style.display = 'flex';
 
