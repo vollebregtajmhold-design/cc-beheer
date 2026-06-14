@@ -185,13 +185,8 @@
     <hr style="border-color:var(--border); margin:14px 0;">
     <div class="small" style="font-weight:600; margin-bottom:6px;">☁️ Synchroniseren tussen apparaten</div>
     <div class="small" style="margin-bottom:8px;">
-      Gaat automatisch: na elke wijziging wordt opgeslagen in de cloud, en bij openen van de app wordt de nieuwste versie opgehaald. Werkt zodra de Webapp-URL hieronder is ingevuld.
+      Live verbonden via Firebase: wijzigingen op één apparaat verschijnen automatisch op alle andere apparaten, zonder knoppen.
     </div>
-    <div class="row">
-      <button class="secondary" onclick="autoSyncDownloadBijOpstart()">⬇️ Nu vernieuwen</button>
-      <button class="secondary" onclick="autoSyncUpload()">⬆️ Nu opslaan</button>
-    </div>
-    <div id="sync-status" class="small" style="margin-top:6px;"></div>
 
     <hr style="border-color:var(--border); margin:14px 0;">
     <div class="small" style="font-weight:600; margin-bottom:6px;">💾 Backup-bestand (reserve)</div>
@@ -236,76 +231,22 @@ function volgendInvoerId(){
 function laad(key){ try{ return JSON.parse(localStorage.getItem(key)) || []; }catch(e){ return []; } }
 function bewaar(key, data){ localStorage.setItem(key, JSON.stringify(data)); }
 
-// Bewaart lokaal én plant een automatische cloud-sync (debounced)
-let _syncTimer = null;
+// Lokale cache bijwerken (de echte synchronisatie gebeurt via Firebase, zie module-script onderaan)
 function bewaarEnSync(key, data){
   bewaar(key, data);
-  if(_syncTimer) clearTimeout(_syncTimer);
-  _syncTimer = setTimeout(autoSyncUpload, 1200);
 }
 
-function autoSyncUpload(){
-  const cfg = laadEmailConfig();
-  if(!cfg.url) return; // nog niet geconfigureerd, niets doen
-  const payload = {
-    klanten: laad('cc_klanten'),
-    invoer: laad('cc_invoer'),
-    verzonden: laad('cc_verzonden')
-  };
-  toonSyncIndicator('⏳ Synchroniseren...');
-  fetch(cfg.url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-    body: JSON.stringify({ action: 'save', payload })
-  }).then(res=>res.json())
-    .then(json=>{
-      toonSyncIndicator(json.ok ? '✅ Gesynchroniseerd' : '❌ Sync mislukt');
-    })
-    .catch(()=>{ toonSyncIndicator('❌ Sync mislukt (verbinding)'); });
-}
-
+// Klein statusje rechtsboven (gebruikt door Firebase-sync)
 function toonSyncIndicator(tekst){
   const el = document.getElementById('sync-indicator');
-  const el2 = document.getElementById('sync-status');
   if(el) el.textContent = tekst;
-  if(el2) el2.textContent = tekst;
-  if(tekst.indexOf('✅')===0){
-    setTimeout(()=>{
-      if(el && el.textContent===tekst) el.textContent='';
-      if(el2 && el2.textContent===tekst) el2.textContent='';
-    }, 3000);
+  if(tekst && tekst.indexOf('☁️')===0){
+    setTimeout(()=>{ if(el && el.textContent===tekst) el.textContent=''; }, 2000);
   }
 }
 
-// Bij opstart: nieuwste gegevens uit de cloud ophalen (indien geconfigureerd)
-function autoSyncDownloadBijOpstart(){
-  const cfg = laadEmailConfig();
-  if(!cfg.url) return;
-  toonSyncIndicator('⏳ Ophalen...');
-  fetch(cfg.url + '?action=load')
-    .then(res=>res.json())
-    .then(json=>{
-      if(json.ok && json.payload){
-        const p = json.payload;
-        if(p.klanten) bewaar('cc_klanten', p.klanten);
-        if(p.invoer) bewaar('cc_invoer', p.invoer);
-        if(p.verzonden) bewaar('cc_verzonden', p.verzonden);
-        klanten = laad('cc_klanten');
-        invoer = laad('cc_invoer');
-        vulKlantSelects();
-        toonLaatsteInvoer();
-        toonOverzicht();
-        toonVerzendlijst();
-        toonSyncIndicator('✅ Bijgewerkt');
-      } else {
-        toonSyncIndicator('');
-      }
-    })
-    .catch(()=>{ toonSyncIndicator(''); });
-}
-
-let klanten = laad('cc_klanten');
-let invoer  = laad('cc_invoer');
+var klanten = laad('cc_klanten');
+var invoer  = laad('cc_invoer');
 
 // ---------- TABS ----------
 document.querySelectorAll('.tab').forEach(t=>{
@@ -362,19 +303,23 @@ function opslaanInvoer(){
     opmerking: document.getElementById('i-opmerking').value.trim()
   };
 
+  let opgeslagenItem;
   if(bewerkInvoerId){
     const idx = invoer.findIndex(r=>r.id===bewerkInvoerId);
     if(idx>-1) invoer[idx] = Object.assign({id: bewerkInvoerId}, veld);
+    opgeslagenItem = invoer[idx];
     bewerkInvoerId = null;
     document.querySelector('#tab-invoer button').textContent = '✅ Opslaan';
     document.getElementById('i-status').textContent = '✅ Wijziging opgeslagen voor ' + klant;
   } else {
     veld.id = volgendInvoerId();
     invoer.push(veld);
+    opgeslagenItem = veld;
     document.getElementById('i-status').textContent = '✅ Opgeslagen voor ' + klant;
   }
 
   bewaarEnSync('cc_invoer', invoer);
+  if(window.fbSaveInvoer) window.fbSaveInvoer(opgeslagenItem);
   document.getElementById('i-cc').value=0;
   document.getElementById('i-platen').value=0;
   document.getElementById('i-opzet').value=0;
@@ -536,6 +481,7 @@ function toonLaatsteInvoer(){
 function verwijderInvoer(id){
   invoer = invoer.filter(r=>r.id!==id);
   bewaarEnSync('cc_invoer', invoer);
+  if(window.fbDeleteInvoer) window.fbDeleteInvoer(id);
   toonLaatsteInvoer();
 }
 
@@ -839,14 +785,16 @@ function mailOverzicht(){
 function logVerzending(klant, email){
   let lijst = laad('cc_verzonden');
   const nu = new Date();
-  lijst.push({
+  const item = {
     id: Date.now(),
     klant,
     email,
     datum: nu.toISOString().slice(0,10),
     tijd: nu.toLocaleTimeString('nl-NL', {hour:'2-digit', minute:'2-digit'})
-  });
+  };
+  lijst.push(item);
   bewaarEnSync('cc_verzonden', lijst);
+  if(window.fbSaveVerzonden) window.fbSaveVerzonden(item);
   toonVerzendlijst();
 }
 
@@ -854,6 +802,7 @@ function verwijderVerzending(id){
   let lijst = laad('cc_verzonden');
   lijst = lijst.filter(v=>v.id!==id);
   bewaarEnSync('cc_verzonden', lijst);
+  if(window.fbDeleteVerzonden) window.fbDeleteVerzonden(id);
   toonVerzendlijst();
 }
 
@@ -879,6 +828,7 @@ function laadEmailConfig(){
 function opslaanEmailConfig(){
   const cfg = { url: document.getElementById('cfg-url').value.trim() };
   bewaar('cc_email_cfg', cfg);
+  if(window.fbSaveEmailConfig) window.fbSaveEmailConfig(cfg);
   document.getElementById('cfg-status').textContent = '✅ Opgeslagen.';
 }
 function vulEmailConfigVelden(){
@@ -943,8 +893,14 @@ function opslaanKlant(){
     const idx = klanten.findIndex(k=>k.naam===bewerkKlantNaam);
     if(idx>-1) klanten[idx] = data;
     if(bewerkKlantNaam !== naam){
-      invoer.forEach(r=>{ if(r.klant===bewerkKlantNaam) r.klant = naam; });
+      invoer.forEach(r=>{
+        if(r.klant===bewerkKlantNaam){
+          r.klant = naam;
+          if(window.fbSaveInvoer) window.fbSaveInvoer(r);
+        }
+      });
       bewaarEnSync('cc_invoer', invoer);
+      if(window.fbDeleteKlant) window.fbDeleteKlant(bewerkKlantNaam);
     }
     document.getElementById('k-status').textContent='✅ Gewijzigd.';
     bewerkKlantNaam = null;
@@ -955,6 +911,7 @@ function opslaanKlant(){
   }
 
   bewaarEnSync('cc_klanten', klanten);
+  if(window.fbSaveKlant) window.fbSaveKlant(data);
   ['k-naam','k-adres','k-woonplaats','k-telefoon','k-email','k-transporteur'].forEach(id=>document.getElementById(id).value='');
   vulKlantSelects();
   toonKlanten();
@@ -977,6 +934,7 @@ function verwijderKlant(naam){
   if(!confirm('Klant "'+naam+'" verwijderen?')) return;
   klanten = klanten.filter(k=>k.naam!==naam);
   bewaarEnSync('cc_klanten', klanten);
+  if(window.fbDeleteKlant) window.fbDeleteKlant(naam);
   vulKlantSelects();
   toonKlanten();
 }
@@ -999,7 +957,107 @@ function toonKlanten(){
 // ---------- INIT ----------
 vulKlantSelects();
 toonLaatsteInvoer();
-autoSyncDownloadBijOpstart();
+</script>
+
+<!-- ===== FIREBASE LIVE-SYNC ===== -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import {
+  getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot, getDocs
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDcIlmELWAClhg-6aOHCs-QsgxBJTkP8UQ",
+  authDomain: "cc-beheer.firebaseapp.com",
+  projectId: "cc-beheer",
+  storageBucket: "cc-beheer.firebasestorage.app",
+  messagingSenderId: "835121705327",
+  appId: "1:835121705327:web:f4f7fabf36d868809b389a"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+// Maakt van een willekeurige tekst een veilige document-ID
+function veiligId(s){
+  return String(s).toLowerCase()
+    .replace(/[^a-z0-9]+/g,'_')
+    .replace(/^_+|_+$/g,'') || 'item';
+}
+
+// ---------- EENMALIGE MIGRATIE VAN LOKALE DATA ----------
+const klaar = { klanten:false, invoer:false, verzonden:false, config:false };
+function alleKlaar(){ return Object.values(klaar).every(Boolean); }
+
+async function migreerIndienLeeg(){
+  if(!alleKlaar()) return;
+  try{
+    const lokKlanten = JSON.parse(localStorage.getItem('cc_klanten')||'[]');
+    if(lokKlanten.length && (await getDocs(collection(db,'klanten'))).empty){
+      for(const k of lokKlanten) await setDoc(doc(db,'klanten', veiligId(k.naam)), k);
+    }
+    const lokInvoer = JSON.parse(localStorage.getItem('cc_invoer')||'[]');
+    if(lokInvoer.length && (await getDocs(collection(db,'invoer'))).empty){
+      for(const r of lokInvoer) await setDoc(doc(db,'invoer', String(r.id)), r);
+    }
+    const lokVerz = JSON.parse(localStorage.getItem('cc_verzonden')||'[]');
+    if(lokVerz.length && (await getDocs(collection(db,'verzonden'))).empty){
+      for(const v of lokVerz) await setDoc(doc(db,'verzonden', String(v.id)), v);
+    }
+    const lokCfg = JSON.parse(localStorage.getItem('cc_email_cfg')||'{}');
+    if(lokCfg.url && (await getDocs(collection(db,'config'))).empty){
+      await setDoc(doc(db,'config','main'), lokCfg);
+    }
+  }catch(err){ console.error('Migratie mislukt:', err); }
+}
+
+// ---------- LIVE LISTENERS ----------
+onSnapshot(collection(db,'klanten'), snap=>{
+  window.klanten = snap.docs.map(d=>d.data());
+  localStorage.setItem('cc_klanten', JSON.stringify(window.klanten));
+  window.vulKlantSelects?.();
+  window.toonKlanten?.();
+  window.toonOverzicht?.();
+  window.toonSyncIndicator?.('☁️');
+  klaar.klanten = true;
+  migreerIndienLeeg();
+});
+
+onSnapshot(collection(db,'invoer'), snap=>{
+  window.invoer = snap.docs.map(d=>d.data());
+  localStorage.setItem('cc_invoer', JSON.stringify(window.invoer));
+  window.toonLaatsteInvoer?.();
+  window.toonOverzicht?.();
+  klaar.invoer = true;
+  migreerIndienLeeg();
+});
+
+onSnapshot(collection(db,'verzonden'), snap=>{
+  const lijst = snap.docs.map(d=>d.data());
+  localStorage.setItem('cc_verzonden', JSON.stringify(lijst));
+  window.toonVerzendlijst?.();
+  klaar.verzonden = true;
+  migreerIndienLeeg();
+});
+
+onSnapshot(collection(db,'config'), snap=>{
+  const main = snap.docs.find(d=>d.id==='main');
+  if(main){
+    localStorage.setItem('cc_email_cfg', JSON.stringify(main.data()));
+    window.vulEmailConfigVelden?.();
+  }
+  klaar.config = true;
+  migreerIndienLeeg();
+});
+
+// ---------- SCHRIJF-FUNCTIES (aangeroepen vanuit de hoofd-app) ----------
+window.fbSaveKlant      = (k)    => setDoc(doc(db,'klanten', veiligId(k.naam)), k);
+window.fbDeleteKlant    = (naam) => deleteDoc(doc(db,'klanten', veiligId(naam)));
+window.fbSaveInvoer     = (r)    => setDoc(doc(db,'invoer', String(r.id)), r);
+window.fbDeleteInvoer   = (id)   => deleteDoc(doc(db,'invoer', String(id)));
+window.fbSaveVerzonden  = (v)    => setDoc(doc(db,'verzonden', String(v.id)), v);
+window.fbDeleteVerzonden= (id)   => deleteDoc(doc(db,'verzonden', String(id)));
+window.fbSaveEmailConfig= (cfg)  => setDoc(doc(db,'config','main'), cfg);
 </script>
 </body>
 </html>
