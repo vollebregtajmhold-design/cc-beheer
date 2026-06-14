@@ -84,15 +84,15 @@
     <div class="row">
       <div>
         <label>CC</label>
-        <input type="number" id="i-cc" value="0">
+        <input type="number" id="i-cc" placeholder="0">
       </div>
       <div>
         <label>Platen</label>
-        <input type="number" id="i-platen" value="0">
+        <input type="number" id="i-platen" placeholder="0">
       </div>
       <div>
         <label>Opzet</label>
-        <input type="number" id="i-opzet" value="0">
+        <input type="number" id="i-opzet" placeholder="0">
       </div>
     </div>
 
@@ -315,9 +315,9 @@ function opslaanInvoer(){
 
   bewaarEnSync('cc_invoer', invoer);
   if(window.fbSaveInvoer) window.fbSaveInvoer(opgeslagenItem);
-  document.getElementById('i-cc').value=0;
-  document.getElementById('i-platen').value=0;
-  document.getElementById('i-opzet').value=0;
+  document.getElementById('i-cc').value='';
+  document.getElementById('i-platen').value='';
+  document.getElementById('i-opzet').value='';
   document.getElementById('i-opmerking').value='';
   document.getElementById('i-transporteur').value='';
   document.getElementById('i-bon').value='';
