@@ -268,7 +268,9 @@ function vulKlantSelects(){
   const gesorteerd = [...klanten].sort((a,b)=>a.naam.localeCompare(b.naam,'nl'));
   const opts = gesorteerd.map(k=>`<option value="${k.naam}">${k.naam}</option>`).join('');
   document.getElementById('i-klant').innerHTML = '<option value="">-- kies klant --</option>'+opts;
-  document.getElementById('o-klant').innerHTML = '<option value="">-- kies klant --</option>'+opts;
+  document.getElementById('o-klant').innerHTML = '<option value="">-- kies klant --</option>'
+    + '<option value="__totaal__">📊 Totaaloverzicht alle klanten</option>'
+    + opts;
 }
 function fmtDatum(iso){
   const d = new Date(iso);
@@ -488,11 +490,43 @@ function kleurCel(val){
 function toonOverzicht(){
   const klant = document.getElementById('o-klant').value;
   const tbody = document.querySelector('#o-tabel tbody');
+  const thead = document.querySelector('#o-tabel thead tr');
+  const acties = document.querySelector('#tab-overzicht .item-actions');
   tbody.innerHTML = '';
   document.getElementById('o-klantinfo').textContent = '';
   document.getElementById('o-totcc').textContent='CC: 0';
   document.getElementById('o-totplaten').textContent='Platen: 0';
   document.getElementById('o-totopzet').textContent='Opzet: 0';
+
+  if(klant === '__totaal__'){
+    // ---- Totaaloverzicht alle klanten op het scherm ----
+    thead.innerHTML = '<th>Klant</th><th>Woonplaats</th><th>CC</th><th>Platen</th><th>Opzetstukken</th>';
+    acties.style.display = 'none';
+
+    const totalen = [...klanten].sort((a,b)=>a.naam.localeCompare(b.naam,'nl')).map(k=>{
+      let cc=0, pl=0, op=0;
+      invoer.filter(r=>r.klant===k.naam).forEach(r=>{ cc+=r.cc; pl+=r.platen; op+=r.opzet; });
+      return { naam:k.naam, woonplaats:k.woonplaats, cc, pl, op };
+    });
+
+    let tcc=0, tpl=0, top=0;
+    totalen.forEach(t=>{
+      tcc+=t.cc; tpl+=t.pl; top+=t.op;
+      tbody.innerHTML += `<tr><td>${t.naam}</td><td>${t.woonplaats||''}</td>
+        <td style="${kleurCel(t.cc)}">${t.cc}</td>
+        <td style="${kleurCel(t.pl)}">${t.pl}</td>
+        <td style="${kleurCel(t.op)}">${t.op}</td></tr>`;
+    });
+    document.getElementById('o-totcc').textContent='CC: '+tcc;
+    document.getElementById('o-totplaten').textContent='Platen: '+tpl;
+    document.getElementById('o-totopzet').textContent='Opzet: '+top;
+    return;
+  }
+
+  // ---- Normaal: per klant ----
+  thead.innerHTML = '<th>Datum</th><th>Wk</th><th>Bon</th><th>CC</th><th>Platen</th><th>Opzet</th><th>Opm.</th>';
+  acties.style.display = 'flex';
+
   if(!klant) return;
 
   const k = klanten.find(x=>x.naam===klant);
