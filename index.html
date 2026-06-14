@@ -346,74 +346,72 @@ function printBon(id){
   const k = klanten.find(x=>x.naam===r.klant) || {};
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF({ format: 'a4', unit: 'mm' });
-  const pageW = 148, marge = 8, breedte = pageW - marge*2;
+  const pageW = 210, marge = 14, breedte = pageW - marge*2;
 
   // ---- Logo + Kopregel ----
-  doc.addImage(LOGO_BASE64, 'JPEG', marge, 4, 26, 15.1);
-  doc.setFontSize(16);
+  doc.addImage(LOGO_BASE64, 'JPEG', marge, 6, 37, 21.5);
+  doc.setFontSize(22);
   doc.setFont(undefined,'bold');
-  doc.text('Vollebregt Cyclamen', pageW/2 + 12, 12, {align:'center'});
-  doc.setLineWidth(0.5);
-  doc.line(marge, 22, pageW-marge, 22);
+  doc.text('Vollebregt Cyclamen', pageW/2 + 17, 17, {align:'center'});
+  doc.setLineWidth(0.6);
+  doc.line(marge, 31, pageW-marge, 31);
 
   // ---- ID / Datum / Bon ----
-  let y = 28;
-  doc.setFontSize(8); doc.setFont(undefined,'normal');
+  let y = 40;
+  doc.setFontSize(11); doc.setFont(undefined,'normal');
   doc.text('ID:', marge, y);
   doc.setFont(undefined,'bold');
-  doc.text(String(r.id).slice(-5), marge+8, y);
+  doc.text(String(r.id).slice(-5), marge+10, y);
   doc.setFont(undefined,'normal');
   doc.text(fmtDatum(r.datum), pageW/2, y, {align:'center'});
   if(r.bon) doc.text('Bon: ' + r.bon, pageW-marge, y, {align:'right'});
-  y += 3;
+  y += 4;
   doc.line(marge, y, pageW-marge, y);
 
   // ---- Afleveradres ----
-  y += 4;
+  y += 6;
   doc.text('Afleveradres:', marge, y);
-  y += 4.5;
-  doc.setFontSize(11); doc.setFont(undefined,'bold');
+  y += 6.5;
+  doc.setFontSize(15); doc.setFont(undefined,'bold');
   doc.text(r.klant, marge, y);
-  doc.setFontSize(8); doc.setFont(undefined,'normal');
-  doc.text('Transporteur: ' + (r.transporteur||'-'), pageW/2 + 8, y);
-  y += 4.5;
+  doc.setFontSize(11); doc.setFont(undefined,'normal');
+  doc.text('Transporteur: ' + (r.transporteur||'-'), pageW/2 + 11, y);
+  y += 6.5;
   doc.text(k.adres||'', marge, y);
-  y += 4;
+  y += 5.5;
   doc.text(k.woonplaats||'', marge, y);
-  doc.text('Tel: ' + (k.telefoon||''), pageW/2 + 8, y);
-  y += 3.5;
+  doc.text('Tel: ' + (k.telefoon||''), pageW/2 + 11, y);
+  y += 5;
   doc.line(marge, y, pageW-marge, y);
 
   // ---- Tabel CC / Platen / Opzetstuk ----
-  y += 3;
-  const c2 = marge + breedte*0.46;
-  const c3 = marge + breedte*0.72;
-  const c4 = marge + breedte*0.88;
-  doc.setFillColor(235,235,235);
-  doc.rect(marge, y, breedte, 15, 'F');
-  y += 3.5;
-  doc.setFont(undefined,'bold'); doc.setFontSize(9.5);
-  doc.text('cc', c2, y, {align:'center'});
-  doc.text('platen', c3, y, {align:'center'});
-  doc.text('opzetstuk', c4, y, {align:'center'});
-  y += 7.5;
-  doc.setFontSize(12);
-  doc.text('Aantallen:', marge+3, y);
-  doc.text(String(r.cc), c2, y, {align:'center'});
-  doc.text(String(r.platen), c3, y, {align:'center'});
-  doc.text(String(r.opzet), c4, y, {align:'center'});
-  doc.setFontSize(8); doc.setFont(undefined,'normal');
-  y += 4;
+  y += 5;
+  const c2 = marge + breedte*0.42;
+  const c3 = marge + breedte*0.655;
+  const c4 = marge + breedte*0.89;
+  doc.setFillColor(215,215,215);
+  doc.rect(marge, y, breedte, 21, 'F');
+  doc.setFont(undefined,'bold'); doc.setFontSize(13);
+  doc.text('cc', c2, y+7, {align:'center'});
+  doc.text('platen', c3, y+7, {align:'center'});
+  doc.text('opzetstuk', c4, y+7, {align:'center'});
+  doc.setFontSize(17);
+  doc.text('Aantallen:', marge+5, y+16);
+  doc.text(String(r.cc), c2, y+16, {align:'center'});
+  doc.text(String(r.platen), c3, y+16, {align:'center'});
+  doc.text(String(r.opzet), c4, y+16, {align:'center'});
+  doc.setFontSize(11); doc.setFont(undefined,'normal');
+  y += 21;
   doc.line(marge, y, pageW-marge, y);
 
   // ---- Opmerking (alleen tonen als ingevuld) ----
   if(r.opmerking){
-    y += 4;
+    y += 6;
     const opmRegels = doc.splitTextToSize(r.opmerking, breedte);
     doc.text(opmRegels, marge, y);
-    y += (opmRegels.length - 1) * 4;
+    y += (opmRegels.length - 1) * 5.5;
   }
-  y += 4;
+  y += 6;
   doc.line(marge, y, pageW-marge, y);
 
   // ---- Actueel Nieuw Saldo ----
@@ -421,17 +419,17 @@ function printBon(id){
   let saldoCC=0, saldoPL=0, saldoOP=0;
   rows.forEach(x=>{ saldoCC+=x.cc; saldoPL+=x.platen; saldoOP+=x.opzet; });
 
-  y += 4;
+  y += 6;
   doc.setFont(undefined,'bold');
   doc.text('Actueel Nieuw Saldo', marge, y);
   doc.setFont(undefined,'normal');
-  y += 2;
+  y += 3;
   const boxY = y;
 
   // toelichtingstekst naast de saldo-tabel
-  doc.setFontSize(6.5);
-  const tabelBreedte = 30 + 14; // labelkolom + waardekolom
-  const tekstX = marge + tabelBreedte + 4;
+  doc.setFontSize(9);
+  const tabelBreedte = 42 + 20; // labelkolom + waardekolom
+  const tekstX = marge + tabelBreedte + 6;
   const tekstW = (pageW - marge) - tekstX;
   const tekst = [
     'Wilt u er voor zorgdragen dat het saldo binnen 5 werkdagen retour gebracht',
@@ -439,23 +437,23 @@ function printBon(id){
     'Na 5 werkdagen kunnen we kosten in rekening brengen.',
     'Positief is ons tegoed, negatief is uw tegoed.'
   ];
-  let ty = boxY + 4;
+  let ty = boxY + 5;
   tekst.forEach(t=>{
     doc.text(doc.splitTextToSize(t, tekstW), tekstX, ty);
-    ty += 3.6;
+    ty += 5;
   });
-  doc.setFontSize(8);
+  doc.setFontSize(11);
 
   // saldo-tabel
   y = boxY;
   const saldoRows = [['CC', saldoCC], ['Platen', saldoPL], ['Opzetstukken', saldoOP]];
-  doc.setFontSize(7.5);
+  doc.setFontSize(10.5);
   saldoRows.forEach(([label,val])=>{
-    doc.rect(marge, y, 30, 5.5);
-    doc.rect(marge+30, y, 14, 5.5);
-    doc.text(label, marge+2, y+4);
-    doc.text(String(val), marge+30+7, y+4, {align:'center'});
-    y += 5.5;
+    doc.rect(marge, y, 42, 7.7);
+    doc.rect(marge+42, y, 20, 7.7);
+    doc.text(label, marge+3, y+5.5);
+    doc.text(String(val), marge+42+10, y+5.5, {align:'center'});
+    y += 7.7;
   });
 
   doc.save('Bon_' + (r.bon||r.id) + '_' + r.klant + '.pdf');
@@ -467,9 +465,9 @@ function toonLaatsteInvoer(){
   tbody.innerHTML = alle.map(r=>
     `<tr><td>${fmtDatum(r.datum)}</td><td>${r.klant}</td><td>${r.cc}/${r.platen}/${r.opzet}</td>
      <td style="white-space:nowrap;">
-       <button class="secondary" style="padding:2px 6px;font-size:11px;" onclick="bewerkInvoer(${r.id})">✏️</button>
-       <button class="secondary" style="padding:2px 6px;font-size:11px;" onclick="printBon(${r.id})">🖨️</button>
-       <button class="danger" style="padding:2px 6px;font-size:11px;" onclick="verwijderInvoer(${r.id})">x</button>
+       <button class="secondary" style="padding:5px 9px; font-size:15px; margin-right:4px;" onclick="bewerkInvoer(${r.id})">✏️</button>
+       <button class="secondary" style="padding:5px 9px; font-size:15px; margin-right:4px;" onclick="printBon(${r.id})">🖨️</button>
+       <button class="danger" style="padding:5px 10px; font-size:14px;" onclick="verwijderInvoer(${r.id})">✕</button>
      </td></tr>`
   ).join('');
 }
