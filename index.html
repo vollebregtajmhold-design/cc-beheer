@@ -856,18 +856,34 @@ function importBackup(ev){
   const file = ev.target.files[0];
   if(!file) return;
   const reader = new FileReader();
-  reader.onload = function(e){
+  reader.onload = async function(e){
     try{
       const data = JSON.parse(e.target.result);
-      if(!confirm('Huidige gegevens op dit apparaat overschrijven met de backup?')) return;
+      if(!confirm('Huidige gegevens overschrijven met de backup (en naar de cloud sturen)?')) return;
+
       if(data.klanten) bewaar('cc_klanten', data.klanten);
       if(data.invoer) bewaar('cc_invoer', data.invoer);
       if(data.verzonden) bewaar('cc_verzonden', data.verzonden);
       if(data.email_instellingen) bewaar('cc_email_cfg', data.email_instellingen);
-      alert('✅ Backup geladen. De pagina wordt nu vernieuwd.');
+
+      // Ook naar Firebase schrijven, zodat alle apparaten dit krijgen
+      if(window.fbSaveKlant && data.klanten){
+        for(const k of data.klanten) await window.fbSaveKlant(k);
+      }
+      if(window.fbSaveInvoer && data.invoer){
+        for(const r of data.invoer) await window.fbSaveInvoer(r);
+      }
+      if(window.fbSaveVerzonden && data.verzonden){
+        for(const v of data.verzonden) await window.fbSaveVerzonden(v);
+      }
+      if(window.fbSaveEmailConfig && data.email_instellingen?.url){
+        await window.fbSaveEmailConfig(data.email_instellingen);
+      }
+
+      alert('✅ Backup geladen en naar de cloud gestuurd. De pagina wordt nu vernieuwd.');
       location.reload();
     }catch(err){
-      alert('❌ Ongeldig backup-bestand.');
+      alert('❌ Ongeldig backup-bestand: ' + err);
     }
   };
   reader.readAsText(file);
@@ -986,31 +1002,36 @@ function veiligId(s){
 }
 
 // ---------- EENMALIGE MIGRATIE VAN LOKALE DATA ----------
-const klaar = { klanten:false, invoer:false, verzonden:false, config:false };
-function alleKlaar(){ return Object.values(klaar).every(Boolean); }
+// Belangrijk: lees de lokale data NU uit, vóórdat de live-listeners
+// (hieronder) localStorage kunnen overschrijven met cloud-data.
+const origLocal = {
+  klanten:   JSON.parse(localStorage.getItem('cc_klanten')   || '[]'),
+  invoer:    JSON.parse(localStorage.getItem('cc_invoer')    || '[]'),
+  verzonden: JSON.parse(localStorage.getItem('cc_verzonden') || '[]'),
+  cfg:       JSON.parse(localStorage.getItem('cc_email_cfg') || '{}')
+};
 
 async function migreerIndienLeeg(){
-  if(!alleKlaar()) return;
   try{
-    const lokKlanten = JSON.parse(localStorage.getItem('cc_klanten')||'[]');
-    if(lokKlanten.length && (await getDocs(collection(db,'klanten'))).empty){
-      for(const k of lokKlanten) await setDoc(doc(db,'klanten', veiligId(k.naam)), k);
+    if(origLocal.klanten.length && (await getDocs(collection(db,'klanten'))).empty){
+      for(const k of origLocal.klanten) await setDoc(doc(db,'klanten', veiligId(k.naam)), k);
     }
-    const lokInvoer = JSON.parse(localStorage.getItem('cc_invoer')||'[]');
-    if(lokInvoer.length && (await getDocs(collection(db,'invoer'))).empty){
-      for(const r of lokInvoer) await setDoc(doc(db,'invoer', String(r.id)), r);
+    if(origLocal.invoer.length && (await getDocs(collection(db,'invoer'))).empty){
+      for(const r of origLocal.invoer) await setDoc(doc(db,'invoer', String(r.id)), r);
     }
-    const lokVerz = JSON.parse(localStorage.getItem('cc_verzonden')||'[]');
-    if(lokVerz.length && (await getDocs(collection(db,'verzonden'))).empty){
-      for(const v of lokVerz) await setDoc(doc(db,'verzonden', String(v.id)), v);
+    if(origLocal.verzonden.length && (await getDocs(collection(db,'verzonden'))).empty){
+      for(const v of origLocal.verzonden) await setDoc(doc(db,'verzonden', String(v.id)), v);
     }
-    const lokCfg = JSON.parse(localStorage.getItem('cc_email_cfg')||'{}');
-    if(lokCfg.url && (await getDocs(collection(db,'config'))).empty){
-      await setDoc(doc(db,'config','main'), lokCfg);
+    if(origLocal.cfg.url && (await getDocs(collection(db,'config'))).empty){
+      await setDoc(doc(db,'config','main'), origLocal.cfg);
     }
   }catch(err){ console.error('Migratie mislukt:', err); }
+  // Pas NU de live-listeners starten, zodat lokale data niet voortijdig
+  // overschreven wordt voordat de migratie heeft kunnen lopen.
+  starteLiveListeners();
 }
 
+function starteLiveListeners(){
 // ---------- LIVE LISTENERS ----------
 onSnapshot(collection(db,'klanten'), snap=>{
   window.klanten = snap.docs.map(d=>d.data());
@@ -1019,8 +1040,6 @@ onSnapshot(collection(db,'klanten'), snap=>{
   window.toonKlanten?.();
   window.toonOverzicht?.();
   window.toonSyncIndicator?.('☁️');
-  klaar.klanten = true;
-  migreerIndienLeeg();
 });
 
 onSnapshot(collection(db,'invoer'), snap=>{
@@ -1028,16 +1047,12 @@ onSnapshot(collection(db,'invoer'), snap=>{
   localStorage.setItem('cc_invoer', JSON.stringify(window.invoer));
   window.toonLaatsteInvoer?.();
   window.toonOverzicht?.();
-  klaar.invoer = true;
-  migreerIndienLeeg();
 });
 
 onSnapshot(collection(db,'verzonden'), snap=>{
   const lijst = snap.docs.map(d=>d.data());
   localStorage.setItem('cc_verzonden', JSON.stringify(lijst));
   window.toonVerzendlijst?.();
-  klaar.verzonden = true;
-  migreerIndienLeeg();
 });
 
 onSnapshot(collection(db,'config'), snap=>{
@@ -1046,9 +1061,10 @@ onSnapshot(collection(db,'config'), snap=>{
     localStorage.setItem('cc_email_cfg', JSON.stringify(main.data()));
     window.vulEmailConfigVelden?.();
   }
-  klaar.config = true;
-  migreerIndienLeeg();
 });
+}
+
+migreerIndienLeeg();
 
 // ---------- SCHRIJF-FUNCTIES (aangeroepen vanuit de hoofd-app) ----------
 window.fbSaveKlant      = (k)    => setDoc(doc(db,'klanten', veiligId(k.naam)), k);
