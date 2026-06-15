@@ -39,18 +39,17 @@
   .row > *{flex:1;}
   table{width:100%; border-collapse:collapse; font-size:13px; margin-top:8px;}
   th, td{padding:6px 4px; border-bottom:1px solid var(--border); text-align:left;}
+  .tabel-scroll{overflow-x:auto; -webkit-overflow-scrolling:touch;}
   #o-tabel{table-layout:fixed;}
   #o-tabel th, #o-tabel td{text-align:center; overflow:hidden; text-overflow:ellipsis;}
   #o-tabel th:nth-child(1), #o-tabel td:nth-child(1),
   #o-tabel th:nth-child(7), #o-tabel td:nth-child(7){text-align:left; white-space:normal;}
   /* Overzicht per klant: Datum, Wk, Bon, CC, Platen, Opzet, Opm. */
-  #o-tabel.modus-klant th:nth-child(1), #o-tabel.modus-klant td:nth-child(1){width:15%;}
-  #o-tabel.modus-klant th:nth-child(2), #o-tabel.modus-klant td:nth-child(2){width:8%;}
-  #o-tabel.modus-klant th:nth-child(3), #o-tabel.modus-klant td:nth-child(3){width:9%;}
-  #o-tabel.modus-klant th:nth-child(4), #o-tabel.modus-klant td:nth-child(4){width:9%;}
-  #o-tabel.modus-klant th:nth-child(5), #o-tabel.modus-klant td:nth-child(5){width:9%;}
-  #o-tabel.modus-klant th:nth-child(6), #o-tabel.modus-klant td:nth-child(6){width:9%;}
-  #o-tabel.modus-klant th:nth-child(7), #o-tabel.modus-klant td:nth-child(7){width:41%;}
+  /* Op klein scherm: vaste minimumbreedtes + horizontaal scrollen i.p.v. afkappen */
+  #o-tabel.modus-klant{table-layout:auto; min-width:560px;}
+  #o-tabel.modus-klant th, #o-tabel.modus-klant td{white-space:nowrap; overflow:visible; text-overflow:initial; padding:6px 8px;}
+  #o-tabel.modus-klant th:nth-child(1), #o-tabel.modus-klant td:nth-child(1){white-space:nowrap; width:auto;}
+  #o-tabel.modus-klant th:nth-child(7), #o-tabel.modus-klant td:nth-child(7){white-space:normal; min-width:140px;}
   /* Totaaloverzicht: Klant, CC, Platen, Opzetstukken */
   #o-tabel.modus-totaal th:nth-child(1), #o-tabel.modus-totaal td:nth-child(1){width:46%; text-align:left;}
   #o-tabel.modus-totaal th:nth-child(2), #o-tabel.modus-totaal td:nth-child(2),
@@ -132,12 +131,14 @@
 
     <div id="o-klantinfo" class="small" style="margin-top:8px;"></div>
 
-    <table id="o-tabel">
-      <thead>
-        <tr><th>Datum</th><th>Wk</th><th>Bon</th><th>CC</th><th>Platen</th><th>Opzet</th><th>Opm.</th></tr>
-      </thead>
-      <tbody></tbody>
-    </table>
+    <div class="tabel-scroll">
+      <table id="o-tabel">
+        <thead>
+          <tr><th>Datum</th><th>Wk</th><th>Bon</th><th>CC</th><th>Platen</th><th>Opzet</th><th>Opm.</th></tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
 
     <div class="totals">
       <span id="o-totcc">CC: 0</span>
@@ -782,7 +783,7 @@ function mailOverzicht(){
 
   const cfg = laadEmailConfig();
   const onderwerp = 'Fustoverzicht - ' + klant;
-  const tekst = `Beste ${klant},\n\nIn de bijlage vindt u het actuele overzicht.\n\nMet vriendelijke groet,\nVollebregt Cyclamen`;
+  const tekst = `Mijnheer, Mevrouw,\n\nIn de bijlage vindt u het actuele overzicht van de cc-administratie.\n\nMet vriendelijke groet,\nArno Vollebregt`;
   const status = document.getElementById('o-status');
 
   if(cfg.url){
