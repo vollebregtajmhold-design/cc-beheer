@@ -11,1112 +11,218 @@
 <meta name="apple-mobile-web-app-title" content="CC Beheer">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
-  :root, [data-theme="light"]{
-    --bg:#f5f6f8; --card:#ffffff; --border:#dde1e6; --input-bg:#f0f1f3;
-    --text:#1a1d24; --muted:#6b7280; --accent:#4f8cff;
-    --green:#4caf50; --red:#e57373;
-  }
-  [data-theme="dark"]{
-    --bg:#0f1115; --card:#1a1d24; --border:#2a2e37; --input-bg:#11141a;
-    --text:#e8eaed; --muted:#9aa0a6; --accent:#4f8cff;
-    --green:#4caf50; --red:#e57373;
-  }
-  *{box-sizing:border-box; font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;}
-  body{margin:0; background:var(--bg); color:var(--text); padding-bottom:70px;}
-  header{padding:14px 16px; border-bottom:1px solid var(--border); position:sticky; top:0; background:var(--bg); z-index:10;}
-  h1{margin:0; font-size:18px;}
-  .tabs{display:flex; gap:6px; padding:10px 16px; max-width:700px; margin:0 auto; position:sticky; top:52px; background:var(--bg); z-index:9;}
-  .tab{flex:1; text-align:center; padding:10px 4px; border-radius:8px; background:var(--accent); color:#fff; cursor:pointer; font-size:13px; font-weight:600; border:none; opacity:0.55;}
-  .tab.active{opacity:1; box-shadow:0 2px 6px rgba(0,0,0,0.15);}
-  .content{padding:16px; max-width:700px; margin:0 auto;}
-  .card{background:var(--card); border:1px solid var(--border); border-radius:10px; padding:14px; margin-bottom:12px;}
-  label{display:block; font-size:12px; color:var(--muted); margin:8px 0 4px;}
-  input, select, textarea{width:100%; padding:9px; border-radius:8px; border:1px solid var(--border); background:var(--input-bg); color:var(--text); font-size:14px;}
-  button{padding:10px 14px; border-radius:8px; border:none; background:var(--accent); color:#fff; font-size:14px; cursor:pointer; margin-top:4px;}
+  :root,[data-theme="light"]{--bg:#f5f6f8;--card:#ffffff;--border:#dde1e6;--input-bg:#f0f1f3;--text:#1a1d24;--muted:#6b7280;--accent:#4f8cff;--green:#4caf50;--red:#e57373;}
+  [data-theme="dark"]{--bg:#0f1115;--card:#1a1d24;--border:#2a2e37;--input-bg:#11141a;--text:#e8eaed;--muted:#9aa0a6;--accent:#4f8cff;--green:#4caf50;--red:#e57373;}
+  *{box-sizing:border-box;font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;}
+  body{margin:0;background:var(--bg);color:var(--text);padding-bottom:70px;}
+  header{padding:14px 16px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg);z-index:10;}
+  h1{margin:0;font-size:18px;}
+  .tabs{display:flex;gap:6px;padding:10px 16px;max-width:700px;margin:0 auto;position:sticky;top:52px;background:var(--bg);z-index:9;}
+  .tab{flex:1;text-align:center;padding:10px 4px;border-radius:8px;background:var(--accent);color:#fff;cursor:pointer;font-size:13px;font-weight:600;border:none;opacity:0.55;}
+  .tab.active{opacity:1;box-shadow:0 2px 6px rgba(0,0,0,0.15);}
+  .content{padding:16px;max-width:700px;margin:0 auto;}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:12px;}
+  label{display:block;font-size:12px;color:var(--muted);margin:8px 0 4px;}
+  input,select,textarea{width:100%;padding:9px;border-radius:8px;border:1px solid var(--border);background:var(--input-bg);color:var(--text);font-size:14px;}
+  button{padding:10px 14px;border-radius:8px;border:none;background:var(--accent);color:#fff;font-size:14px;cursor:pointer;margin-top:4px;}
   button.secondary{background:#2a2e37;}
   button.danger{background:var(--red);}
-  .row{display:flex; gap:8px;}
-  .row > *{flex:1;}
-  table{width:100%; border-collapse:collapse; font-size:13px; margin-top:8px;}
-  th, td{padding:6px 4px; border-bottom:1px solid var(--border); text-align:left;}
-  .tabel-scroll{overflow-x:auto; -webkit-overflow-scrolling:touch;}
+  .row{display:flex;gap:8px;}
+  .row>*{flex:1;}
+  table{width:100%;border-collapse:collapse;font-size:13px;margin-top:8px;}
+  th,td{padding:6px 4px;border-bottom:1px solid var(--border);text-align:left;}
+  .tabel-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;}
   #o-tabel{table-layout:fixed;}
-  #o-tabel th, #o-tabel td{text-align:center; overflow:hidden; text-overflow:ellipsis;}
-  #o-tabel th:nth-child(1), #o-tabel td:nth-child(1),
-  #o-tabel th:nth-child(7), #o-tabel td:nth-child(7){text-align:left; white-space:normal;}
-  /* Overzicht per klant: Datum, Wk, Bon, CC, Platen, Opzet, Opm. */
-  /* Op klein scherm: vaste minimumbreedtes + horizontaal scrollen i.p.v. afkappen */
-  #o-tabel.modus-klant{table-layout:auto; min-width:560px;}
-  #o-tabel.modus-klant th, #o-tabel.modus-klant td{white-space:nowrap; overflow:visible; text-overflow:initial; padding:6px 8px;}
-  #o-tabel.modus-klant th:nth-child(1), #o-tabel.modus-klant td:nth-child(1){white-space:nowrap; width:auto;}
-  #o-tabel.modus-klant th:nth-child(7), #o-tabel.modus-klant td:nth-child(7){white-space:normal; min-width:140px;}
-  /* Totaaloverzicht: Klant, CC, Platen, Opzetstukken */
-  #o-tabel.modus-totaal th:nth-child(1), #o-tabel.modus-totaal td:nth-child(1){width:46%; text-align:left;}
-  #o-tabel.modus-totaal th:nth-child(2), #o-tabel.modus-totaal td:nth-child(2),
-  #o-tabel.modus-totaal th:nth-child(3), #o-tabel.modus-totaal td:nth-child(3),
-  #o-tabel.modus-totaal th:nth-child(4), #o-tabel.modus-totaal td:nth-child(4){width:18%;}
-  th{color:var(--muted); font-weight:500;}
-  .totals{display:flex; justify-content:space-between; font-weight:600; margin-top:8px; padding-top:8px; border-top:1px solid var(--border);}
+  #o-tabel th,#o-tabel td{text-align:center;overflow:hidden;text-overflow:ellipsis;}
+  #o-tabel th:nth-child(1),#o-tabel td:nth-child(1),#o-tabel th:nth-child(7),#o-tabel td:nth-child(7){text-align:left;white-space:normal;}
+  #o-tabel.modus-klant{table-layout:auto;min-width:560px;}
+  #o-tabel.modus-klant th,#o-tabel.modus-klant td{white-space:nowrap;overflow:visible;text-overflow:initial;padding:6px 8px;}
+  #o-tabel.modus-klant th:nth-child(1),#o-tabel.modus-klant td:nth-child(1){white-space:nowrap;width:auto;}
+  #o-tabel.modus-klant th:nth-child(7),#o-tabel.modus-klant td:nth-child(7){white-space:normal;min-width:140px;}
+  #o-tabel.modus-totaal th:nth-child(1),#o-tabel.modus-totaal td:nth-child(1){width:46%;text-align:left;}
+  #o-tabel.modus-totaal th:nth-child(2),#o-tabel.modus-totaal td:nth-child(2),
+  #o-tabel.modus-totaal th:nth-child(3),#o-tabel.modus-totaal td:nth-child(3),
+  #o-tabel.modus-totaal th:nth-child(4),#o-tabel.modus-totaal td:nth-child(4){width:18%;}
+  th{color:var(--muted);font-weight:500;}
+  .totals{display:flex;justify-content:space-between;font-weight:600;margin-top:8px;padding-top:8px;border-top:1px solid var(--border);}
   .hidden{display:none;}
-  .small{font-size:12px; color:var(--muted);}
-  .item-actions{display:flex; gap:6px; margin-top:6px;}
-  .badge{display:inline-block; padding:2px 6px; border-radius:6px; background:#e0e3e8; font-size:11px; color:#000;}
+  .small{font-size:12px;color:var(--muted);}
+  .item-actions{display:flex;gap:6px;margin-top:6px;}
+  .badge{display:inline-block;padding:2px 6px;border-radius:6px;background:#e0e3e8;font-size:11px;color:#000;}
+  .fh-btn{display:flex;align-items:center;justify-content:center;padding:10px 14px;border-radius:8px;background:#e8174a;color:#fff;font-size:14px;font-weight:600;text-decoration:none;margin-top:4px;}
 </style>
 </head>
 <body>
 <header>
-  <div style="display:flex; justify-content:space-between; align-items:center;">
-    <h1>📦 CC Beheer 2026</h1>
-    <div style="display:flex; align-items:center; gap:8px;">
+  <div style="display:flex;justify-content:space-between;align-items:center;">
+    <h1>&#128230; CC Beheer 2026</h1>
+    <div style="display:flex;align-items:center;gap:8px;">
       <span id="sync-indicator" class="small"></span>
-      <button class="secondary" style="margin:0; padding:6px 10px;" onclick="toggleThema()">🌙/☀️</button>
+      <button class="secondary" style="margin:0;padding:6px 10px;" onclick="toggleThema()">&#127769;/&#9728;&#65039;</button>
     </div>
   </div>
 </header>
-
 <div class="tabs">
   <div class="tab active" data-tab="invoer">Invoer</div>
   <div class="tab" data-tab="overzicht">Overzicht</div>
   <div class="tab" data-tab="klanten">Instellingen</div>
 </div>
-
 <div class="content">
-
   <!-- INVOER -->
   <div id="tab-invoer" class="card">
     <label>Klant</label>
     <select id="i-klant" onchange="vulTransporteur()"></select>
-
     <label>Datum</label>
     <input type="date" id="i-datum">
-
     <label>Bonnummer</label>
-    <input type="text" id="i-bon" style="background:var(--input-bg); font-weight:600; border-color:var(--accent);" placeholder="optioneel">
-
+    <input type="text" id="i-bon" style="background:var(--input-bg);font-weight:600;border-color:var(--accent);" placeholder="optioneel">
     <div class="row">
-      <div>
-        <label>CC</label>
-        <input type="number" id="i-cc" placeholder="0">
-      </div>
-      <div>
-        <label>Platen</label>
-        <input type="number" id="i-platen" placeholder="0">
-      </div>
-      <div>
-        <label>Opzet</label>
-        <input type="number" id="i-opzet" placeholder="0">
-      </div>
+      <div><label>CC</label><input type="number" id="i-cc" placeholder="0"></div>
+      <div><label>Platen</label><input type="number" id="i-platen" placeholder="0"></div>
+      <div><label>Opzet</label><input type="number" id="i-opzet" placeholder="0"></div>
     </div>
-
     <label>Transporteur</label>
     <input type="text" id="i-transporteur" placeholder="bv. Hogenboom">
-
     <label>Opmerking</label>
     <textarea id="i-opmerking" rows="2"></textarea>
-
-    <button onclick="opslaanInvoer()">✅ Opslaan</button>
+    <div class="row" style="margin-top:4px;">
+      <button onclick="opslaanInvoer()">&#10003;&#65039; Opslaan</button>
+      <a href="https://diensten.royalfloraholland.com/LogistiekeMiddelen/transactions/transactions.aspx" target="_blank" class="fh-btn">&#127799; Flora Holland</a>
+    </div>
     <div id="i-status" class="small"></div>
-
-    <hr style="border-color:var(--border); margin:14px 0;">
+    <hr style="border-color:var(--border);margin:14px 0;">
     <div class="small">Alle invoer (nieuwste eerst)</div>
-    <div style="max-height:300px; overflow-y:auto;">
+    <div style="max-height:300px;overflow-y:auto;">
       <table id="i-laatste"><tbody></tbody></table>
     </div>
   </div>
-
   <!-- OVERZICHT -->
   <div id="tab-overzicht" class="card hidden">
     <label>Klant</label>
     <select id="o-klant" onchange="toonOverzicht()"></select>
-
     <div id="o-klantinfo" class="small" style="margin-top:8px;"></div>
-
     <div class="tabel-scroll">
       <table id="o-tabel">
-        <thead>
-          <tr><th>Datum</th><th>Wk</th><th>Bon</th><th>CC</th><th>Platen</th><th>Opzet</th><th>Opm.</th></tr>
-        </thead>
+        <thead><tr><th>Datum</th><th>Wk</th><th>Bon</th><th>CC</th><th>Platen</th><th>Opzet</th><th>Opm.</th></tr></thead>
         <tbody></tbody>
       </table>
     </div>
-
     <div class="totals">
       <span id="o-totcc">CC: 0</span>
       <span id="o-totplaten">Platen: 0</span>
       <span id="o-totopzet">Opzet: 0</span>
     </div>
-
     <div class="item-actions">
-      <button onclick="exportPdf()">📄 PDF</button>
-      <button class="secondary" onclick="mailOverzicht()">✉️ Mail</button>
+      <button onclick="exportPdf()">&#128196; PDF</button>
+      <button class="secondary" onclick="mailOverzicht()">&#9993;&#65039; Mail</button>
     </div>
     <div id="o-status" class="small"></div>
-
-    <hr style="border-color:var(--border); margin:14px 0;">
-    <button class="secondary" onclick="exportTotaalPdf()">📊 Totaaloverzicht alle klanten</button>
-    <button class="secondary" onclick="exportCsv()">📥 Download Excel (CSV)</button>
-
-    <hr style="border-color:var(--border); margin:14px 0;">
-    <div class="small" style="font-weight:600; margin-bottom:4px;">Verzendlijst (laatste mails)</div>
+    <hr style="border-color:var(--border);margin:14px 0;">
+    <button class="secondary" onclick="exportTotaalPdf()">&#128202; Totaaloverzicht alle klanten</button>
+    <button class="secondary" onclick="exportCsv()">&#128229; Download Excel (CSV)</button>
+    <hr style="border-color:var(--border);margin:14px 0;">
+    <div class="small" style="font-weight:600;margin-bottom:4px;">Verzendlijst (laatste mails)</div>
     <div id="o-verzendlijst"></div>
   </div>
-
-  <!-- KLANTEN -->
+  <!-- INSTELLINGEN -->
   <div id="tab-klanten" class="card hidden">
-    <label>Naam</label>
-    <input type="text" id="k-naam" placeholder="Klantnaam">
-    <label>Adres</label>
-    <input type="text" id="k-adres">
-    <label>Woonplaats</label>
-    <input type="text" id="k-woonplaats">
-    <label>Telefoon</label>
-    <input type="text" id="k-telefoon">
-    <label>E-mail</label>
-    <input type="email" id="k-email">
-    <label>Vaste transporteur</label>
-    <input type="text" id="k-transporteur" placeholder="bv. Hogenboom">
-    <button onclick="opslaanKlant()">➕ Klant toevoegen</button>
+    <label>Naam</label><input type="text" id="k-naam" placeholder="Klantnaam">
+    <label>Adres</label><input type="text" id="k-adres">
+    <label>Woonplaats</label><input type="text" id="k-woonplaats">
+    <label>Telefoon</label><input type="text" id="k-telefoon">
+    <label>E-mail</label><input type="email" id="k-email">
+    <label>Vaste transporteur</label><input type="text" id="k-transporteur" placeholder="bv. Hogenboom">
+    <button onclick="opslaanKlant()">&#10133; Klant toevoegen</button>
     <div id="k-status" class="small"></div>
-
-    <hr style="border-color:var(--border); margin:14px 0;">
-    <div class="small" style="font-weight:600; margin-bottom:6px;">✉️ E-mail instellingen (Google Apps Script)</div>
-    <div class="small" style="margin-bottom:8px;">
-      Plak hier de webapp-URL van je Google Apps Script mail-service (gratis, verstuurt vanuit jouw Gmail incl. PDF).
-    </div>
+    <hr style="border-color:var(--border);margin:14px 0;">
+    <div class="small" style="font-weight:600;margin-bottom:6px;">&#9993;&#65039; E-mail instellingen (Google Apps Script)</div>
+    <div class="small" style="margin-bottom:8px;">Plak hier de webapp-URL van je Google Apps Script mail-service.</div>
     <label>Webapp-URL</label>
     <input type="text" id="cfg-url" placeholder="https://script.google.com/macros/s/.../exec">
-    <button class="secondary" onclick="opslaanEmailConfig()">💾 Instellingen opslaan</button>
+    <button class="secondary" onclick="opslaanEmailConfig()">&#128190; Instellingen opslaan</button>
     <div id="cfg-status" class="small"></div>
-
-    <hr style="border-color:var(--border); margin:14px 0;">
+    <hr style="border-color:var(--border);margin:14px 0;">
     <div id="k-lijst"></div>
-
-    <hr style="border-color:var(--border); margin:14px 0;">
-    <div class="small" style="font-weight:600; margin-bottom:6px;">☁️ Synchroniseren tussen apparaten</div>
-    <div class="small" style="margin-bottom:8px;">
-      Live verbonden via Firebase: wijzigingen op één apparaat verschijnen automatisch op alle andere apparaten, zonder knoppen.
-    </div>
-
-    <hr style="border-color:var(--border); margin:14px 0;">
-    <div class="small" style="font-weight:600; margin-bottom:6px;">💾 Backup-bestand (reserve)</div>
-    <div class="small" style="margin-bottom:8px;">
-      Download eventueel ook een lokaal backup-bestand.
-    </div>
+    <hr style="border-color:var(--border);margin:14px 0;">
+    <div class="small" style="font-weight:600;margin-bottom:6px;">&#9729;&#65039; Synchroniseren tussen apparaten</div>
+    <div class="small" style="margin-bottom:8px;">Live verbonden via Firebase: wijzigingen verschijnen automatisch op alle apparaten.</div>
+    <hr style="border-color:var(--border);margin:14px 0;">
+    <div class="small" style="font-weight:600;margin-bottom:6px;">&#128190; Backup-bestand (reserve)</div>
+    <div class="small" style="margin-bottom:8px;">Download eventueel ook een lokaal backup-bestand.</div>
     <div class="row">
-      <button class="secondary" onclick="exportBackup()">⬇️ Backup downloaden</button>
-      <button class="secondary" onclick="document.getElementById('k-import').click()">⬆️ Backup laden</button>
+      <button class="secondary" onclick="exportBackup()">&#11015;&#65039; Backup downloaden</button>
+      <button class="secondary" onclick="document.getElementById('k-import').click()">&#11014;&#65039; Backup laden</button>
     </div>
     <input type="file" id="k-import" accept=".json" style="display:none;" onchange="importBackup(event)">
   </div>
-
 </div>
-
 <script>
-const LOGO_BASE64 = "data:image/jpeg;base64,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";
-
-// ---------- THEMA ----------
-let thema = localStorage.getItem('cc_thema') || 'light';
-document.documentElement.setAttribute('data-theme', thema);
-function toggleThema(){
-  thema = (thema === 'light') ? 'dark' : 'light';
-  document.documentElement.setAttribute('data-theme', thema);
-  localStorage.setItem('cc_thema', thema);
-}
-
-function vulTransporteur(){
-  const klant = document.getElementById('i-klant').value;
-  const k = klanten.find(x=>x.naam===klant);
-  document.getElementById('i-transporteur').value = (k && k.transporteur) ? k.transporteur : '';
-}
-
-// ---------- ID-NUMMER (start bij 1) ----------
-function volgendInvoerId(){
-  let max = 0;
-  invoer.forEach(r=>{ if(r.id > max) max = r.id; });
-  return max + 1;
-}
-
-// ---------- DATA ----------
-function laad(key){ try{ return JSON.parse(localStorage.getItem(key)) || []; }catch(e){ return []; } }
-function bewaar(key, data){ localStorage.setItem(key, JSON.stringify(data)); }
-
-// Lokale cache bijwerken (de echte synchronisatie gebeurt via Firebase, zie module-script onderaan)
-function bewaarEnSync(key, data){
-  bewaar(key, data);
-}
-
-// Klein statusje rechtsboven (gebruikt door Firebase-sync)
-function toonSyncIndicator(tekst){
-  const el = document.getElementById('sync-indicator');
-  if(el) el.textContent = tekst;
-  if(tekst && tekst.indexOf('☁️')===0){
-    setTimeout(()=>{ if(el && el.textContent===tekst) el.textContent=''; }, 2000);
-  }
-}
-
-var klanten = laad('cc_klanten');
-var invoer  = laad('cc_invoer');
-
-// ---------- TABS ----------
-document.querySelectorAll('.tab').forEach(t=>{
-  t.onclick = ()=>{
-    document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
-    document.querySelectorAll('.content > .card').forEach(x=>x.classList.add('hidden'));
-    t.classList.add('active');
-    document.getElementById('tab-'+t.dataset.tab).classList.remove('hidden');
-    if(t.dataset.tab==='overzicht'){ toonOverzicht(); toonVerzendlijst(); }
-    if(t.dataset.tab==='klanten'){ toonKlanten(); vulEmailConfigVelden(); }
-    if(t.dataset.tab==='invoer') toonLaatsteInvoer();
-  };
-});
-
-// ---------- HELPERS ----------
-function getISOWeek(date){
-  const d = new Date(date.getTime());
-  d.setHours(0,0,0,0);
-  d.setDate(d.getDate() + 4 - (d.getDay()||7));
-  const yearStart = new Date(d.getFullYear(),0,1);
-  return Math.ceil((((d-yearStart)/86400000)+1)/7);
-}
-function vulKlantSelects(){
-  const gesorteerd = [...klanten].sort((a,b)=>a.naam.localeCompare(b.naam,'nl'));
-  const opts = gesorteerd.map(k=>`<option value="${k.naam}">${k.naam}</option>`).join('');
-  document.getElementById('i-klant').innerHTML = '<option value="">-- kies klant --</option>'+opts;
-  document.getElementById('o-klant').innerHTML = '<option value="">-- kies klant --</option>'
-    + '<option value="__totaal__">📊 Totaaloverzicht alle klanten</option>'
-    + opts;
-}
-function fmtDatum(iso){
-  const d = new Date(iso);
-  return d.toLocaleDateString('nl-NL',{day:'2-digit',month:'2-digit',year:'numeric'});
-}
-
-// ---------- INVOER ----------
-document.getElementById('i-datum').value = new Date().toISOString().slice(0,10);
-
-let bewerkInvoerId = null;
-
-function opslaanInvoer(){
-  const klant = document.getElementById('i-klant').value;
-  const datum = document.getElementById('i-datum').value;
-  if(!klant){ document.getElementById('i-status').textContent = '❌ Kies een klant.'; return; }
-  if(!datum){ document.getElementById('i-status').textContent = '❌ Kies een datum.'; return; }
-
-  const veld = {
-    klant,
-    datum,
-    week: 'wk ' + getISOWeek(new Date(datum)),
-    bon: document.getElementById('i-bon').value.trim(),
-    transporteur: document.getElementById('i-transporteur').value.trim(),
-    cc: Number(document.getElementById('i-cc').value)||0,
-    platen: Number(document.getElementById('i-platen').value)||0,
-    opzet: Number(document.getElementById('i-opzet').value)||0,
-    opmerking: document.getElementById('i-opmerking').value.trim()
-  };
-
-  let opgeslagenItem;
-  if(bewerkInvoerId){
-    const idx = invoer.findIndex(r=>r.id===bewerkInvoerId);
-    if(idx>-1) invoer[idx] = Object.assign({id: bewerkInvoerId}, veld);
-    opgeslagenItem = invoer[idx];
-    bewerkInvoerId = null;
-    document.querySelector('#tab-invoer button').textContent = '✅ Opslaan';
-    document.getElementById('i-status').textContent = '✅ Wijziging opgeslagen voor ' + klant;
-  } else {
-    veld.id = volgendInvoerId();
-    invoer.push(veld);
-    opgeslagenItem = veld;
-    document.getElementById('i-status').textContent = '✅ Opgeslagen voor ' + klant;
-  }
-
-  bewaarEnSync('cc_invoer', invoer);
-  if(window.fbSaveInvoer) window.fbSaveInvoer(opgeslagenItem);
-  document.getElementById('i-cc').value='';
-  document.getElementById('i-platen').value='';
-  document.getElementById('i-opzet').value='';
-  document.getElementById('i-opmerking').value='';
-  document.getElementById('i-transporteur').value='';
-  document.getElementById('i-bon').value='';
-  toonLaatsteInvoer();
-}
-
-function bewerkInvoer(id){
-  const r = invoer.find(x=>x.id===id);
-  if(!r) return;
-  bewerkInvoerId = id;
-  document.getElementById('i-klant').value = r.klant;
-  document.getElementById('i-datum').value = r.datum;
-  document.getElementById('i-bon').value = r.bon;
-  document.getElementById('i-cc').value = r.cc;
-  document.getElementById('i-platen').value = r.platen;
-  document.getElementById('i-opzet').value = r.opzet;
-  document.getElementById('i-opmerking').value = r.opmerking;
-  document.getElementById('i-transporteur').value = r.transporteur||'';
-  document.querySelector('#tab-invoer button').textContent = '💾 Wijziging opslaan';
-  document.getElementById('i-klant').scrollIntoView({behavior:'smooth'});
-}
-
-function printBon(id){
-  const r = invoer.find(x=>x.id===id);
-  if(!r) return;
-  const k = klanten.find(x=>x.naam===r.klant) || {};
-  const { jsPDF } = window.jspdf;
-  const doc = new jsPDF({ format: 'a4', unit: 'mm' });
-  const pageW = 210, marge = 14, breedte = pageW - marge*2;
-
-  // ---- Logo + Kopregel ----
-  doc.addImage(LOGO_BASE64, 'JPEG', marge, 6, 37, 21.5);
-  doc.setFontSize(22);
-  doc.setFont(undefined,'bold');
-  doc.text('Vollebregt Cyclamen', pageW/2 + 17, 17, {align:'center'});
-  doc.setLineWidth(0.6);
-  doc.line(marge, 31, pageW-marge, 31);
-
-  // ---- ID / Datum / Bon ----
-  let y = 40;
-  doc.setFontSize(11); doc.setFont(undefined,'normal');
-  doc.text('ID:', marge, y);
-  doc.setFont(undefined,'bold');
-  doc.text(String(r.id).slice(-5), marge+10, y);
-  doc.setFont(undefined,'normal');
-  doc.text(fmtDatum(r.datum), pageW/2, y, {align:'center'});
-  if(r.bon) doc.text('Bon: ' + r.bon, pageW-marge, y, {align:'right'});
-  y += 4;
-  doc.line(marge, y, pageW-marge, y);
-
-  // ---- Afleveradres ----
-  y += 6;
-  doc.text('Afleveradres:', marge, y);
-  y += 6.5;
-  doc.setFontSize(15); doc.setFont(undefined,'bold');
-  doc.text(r.klant, marge, y);
-  doc.setFontSize(11); doc.setFont(undefined,'normal');
-  doc.text('Transporteur: ' + (r.transporteur||'-'), pageW/2 + 11, y);
-  y += 6.5;
-  doc.text(k.adres||'', marge, y);
-  y += 5.5;
-  doc.text(k.woonplaats||'', marge, y);
-  doc.text('Tel: ' + (k.telefoon||''), pageW/2 + 11, y);
-  y += 5;
-  doc.line(marge, y, pageW-marge, y);
-
-  // ---- Tabel CC / Platen / Opzetstuk ----
-  y += 5;
-  const c2 = marge + breedte*0.42;
-  const c3 = marge + breedte*0.655;
-  const c4 = marge + breedte*0.89;
-  doc.setFillColor(215,215,215);
-  doc.rect(marge, y, breedte, 21, 'F');
-  doc.setFont(undefined,'bold'); doc.setFontSize(13);
-  doc.text('cc', c2, y+7, {align:'center'});
-  doc.text('platen', c3, y+7, {align:'center'});
-  doc.text('opzetstuk', c4, y+7, {align:'center'});
-  doc.setFontSize(17);
-  doc.text('Aantallen:', marge+5, y+16);
-  doc.text(String(r.cc), c2, y+16, {align:'center'});
-  doc.text(String(r.platen), c3, y+16, {align:'center'});
-  doc.text(String(r.opzet), c4, y+16, {align:'center'});
-  doc.setFontSize(11); doc.setFont(undefined,'normal');
-  y += 21;
-  doc.line(marge, y, pageW-marge, y);
-
-  // ---- Opmerking (alleen tonen als ingevuld) ----
-  if(r.opmerking){
-    y += 6;
-    const opmRegels = doc.splitTextToSize(r.opmerking, breedte);
-    doc.text(opmRegels, marge, y);
-    y += (opmRegels.length - 1) * 5.5;
-  }
-  y += 6;
-  doc.line(marge, y, pageW-marge, y);
-
-  // ---- Actueel Nieuw Saldo ----
-  let rows = invoer.filter(x=>x.klant===r.klant && new Date(x.datum) <= new Date(r.datum));
-  let saldoCC=0, saldoPL=0, saldoOP=0;
-  rows.forEach(x=>{ saldoCC+=x.cc; saldoPL+=x.platen; saldoOP+=x.opzet; });
-
-  y += 6;
-  doc.setFont(undefined,'bold');
-  doc.text('Actueel Nieuw Saldo', marge, y);
-  doc.setFont(undefined,'normal');
-  y += 3;
-  const boxY = y;
-
-  // toelichtingstekst naast de saldo-tabel
-  doc.setFontSize(9);
-  const tabelBreedte = 42 + 20; // labelkolom + waardekolom
-  const tekstX = marge + tabelBreedte + 6;
-  const tekstW = (pageW - marge) - tekstX;
-  const tekst = [
-    'Wilt u er voor zorgdragen dat het saldo binnen 5 werkdagen retour gebracht',
-    'wordt, of overgeboekt naar ons FH nummer: 2881.',
-    'Na 5 werkdagen kunnen we kosten in rekening brengen.',
-    'Positief is ons tegoed, negatief is uw tegoed.'
-  ];
-  let ty = boxY + 5;
-  tekst.forEach(t=>{
-    doc.text(doc.splitTextToSize(t, tekstW), tekstX, ty);
-    ty += 5;
-  });
-  doc.setFontSize(11);
-
-  // saldo-tabel
-  y = boxY;
-  const saldoRows = [['CC', saldoCC], ['Platen', saldoPL], ['Opzetstukken', saldoOP]];
-  doc.setFontSize(10.5);
-  saldoRows.forEach(([label,val])=>{
-    doc.rect(marge, y, 42, 7.7);
-    doc.rect(marge+42, y, 20, 7.7);
-    doc.text(label, marge+3, y+5.5);
-    doc.text(String(val), marge+42+10, y+5.5, {align:'center'});
-    y += 7.7;
-  });
-
-  doc.save('Bon_' + (r.bon||r.id) + '_' + r.klant + '.pdf');
-}
-
-function toonLaatsteInvoer(){
-  const alle = [...invoer].reverse();
-  const tbody = document.querySelector('#i-laatste tbody');
-  tbody.innerHTML = alle.map(r=>
-    `<tr><td>${fmtDatum(r.datum)}</td><td>${r.klant}</td><td>${r.cc}/${r.platen}/${r.opzet}</td>
-     <td style="white-space:nowrap;">
-       <button class="secondary" style="padding:5px 9px; font-size:15px; margin-right:4px;" onclick="bewerkInvoer(${r.id})">✏️</button>
-       <button class="secondary" style="padding:5px 9px; font-size:15px; margin-right:4px;" onclick="printBon(${r.id})">🖨️</button>
-       <button class="danger" style="padding:5px 10px; font-size:14px;" onclick="verwijderInvoer(${r.id})">✕</button>
-     </td></tr>`
-  ).join('');
-}
-function verwijderInvoer(id){
-  invoer = invoer.filter(r=>r.id!==id);
-  bewaarEnSync('cc_invoer', invoer);
-  if(window.fbDeleteInvoer) window.fbDeleteInvoer(id);
-  toonLaatsteInvoer();
-}
-
-function kleurCel(val){
-  if(val > 0) return 'background:#c8e6c9;';
-  if(val < 0) return 'background:#ffcdd2;';
-  return '';
-}
-
-// ---------- OVERZICHT ----------
-function toonOverzicht(){
-  const klant = document.getElementById('o-klant').value;
-  const tbody = document.querySelector('#o-tabel tbody');
-  const thead = document.querySelector('#o-tabel thead tr');
-  const acties = document.querySelector('#tab-overzicht .item-actions');
-  tbody.innerHTML = '';
-  document.getElementById('o-klantinfo').textContent = '';
-  document.getElementById('o-totcc').textContent='CC: 0';
-  document.getElementById('o-totplaten').textContent='Platen: 0';
-  document.getElementById('o-totopzet').textContent='Opzet: 0';
-
-  if(klant === '__totaal__'){
-    // ---- Totaaloverzicht alle klanten op het scherm ----
-    document.getElementById('o-tabel').className = 'modus-totaal';
-    thead.innerHTML = '<th>Klant</th><th>CC</th><th>Platen</th><th>Opzetstukken</th>';
-    acties.style.display = 'none';
-
-    const totalen = [...klanten].sort((a,b)=>a.naam.localeCompare(b.naam,'nl')).map(k=>{
-      let cc=0, pl=0, op=0;
-      invoer.filter(r=>r.klant===k.naam).forEach(r=>{ cc+=r.cc; pl+=r.platen; op+=r.opzet; });
-      return { naam:k.naam, cc, pl, op };
-    });
-
-    let tcc=0, tpl=0, top=0;
-    totalen.forEach(t=>{
-      tcc+=t.cc; tpl+=t.pl; top+=t.op;
-      tbody.innerHTML += `<tr><td>${t.naam}</td>
-        <td style="${kleurCel(t.cc)}">${t.cc}</td>
-        <td style="${kleurCel(t.pl)}">${t.pl}</td>
-        <td style="${kleurCel(t.op)}">${t.op}</td></tr>`;
-    });
-    document.getElementById('o-totcc').textContent='CC: '+tcc;
-    document.getElementById('o-totplaten').textContent='Platen: '+tpl;
-    document.getElementById('o-totopzet').textContent='Opzet: '+top;
-    return;
-  }
-
-  // ---- Normaal: per klant ----
-  document.getElementById('o-tabel').className = 'modus-klant';
-  thead.innerHTML = '<th>Datum</th><th>Wk</th><th>Bon</th><th>CC</th><th>Platen</th><th>Opzet</th><th>Opm.</th>';
-  acties.style.display = 'flex';
-
-  if(!klant) return;
-
-  const k = klanten.find(x=>x.naam===klant);
-  if(k) document.getElementById('o-klantinfo').textContent = `${k.adres||''} ${k.woonplaats||''} · ${k.email||''}`;
-
-  let rows = invoer.filter(r=>r.klant===klant);
-  // sorteer: regels met saldo eerst, daarna op datum (nieuw->oud)
-  rows.sort((a,b)=>{
-    const sA = (Math.abs(a.cc)>0 || Math.abs(a.platen)>0);
-    const sB = (Math.abs(b.cc)>0 || Math.abs(b.platen)>0);
-    if(sA && !sB) return -1;
-    if(!sA && sB) return 1;
-    return new Date(b.datum) - new Date(a.datum);
-  });
-
-  let tcc=0, tpl=0, top=0;
-  rows.forEach(r=>{
-    tcc+=r.cc; tpl+=r.platen; top+=r.opzet;
-    tbody.innerHTML += `<tr><td>${fmtDatum(r.datum)}</td><td>${r.week}</td><td>${r.bon}</td>
-      <td style="${kleurCel(r.cc)}">${r.cc}</td>
-      <td style="${kleurCel(r.platen)}">${r.platen}</td>
-      <td style="${kleurCel(r.opzet)}">${r.opzet}</td>
-      <td>${r.opmerking||''}</td></tr>`;
-  });
-  document.getElementById('o-totcc').textContent='CC: '+tcc;
-  document.getElementById('o-totplaten').textContent='Platen: '+tpl;
-  document.getElementById('o-totopzet').textContent='Opzet: '+top;
-}
-
-// ---------- PDF ----------
-function exportPdf(){
-  const klant = document.getElementById('o-klant').value;
-  if(!klant){ alert('Kies eerst een klant.'); return; }
-  const doc = genereerOverzichtPdf(klant);
-  doc.save('Fustoverzicht_' + klant + '.pdf');
-}
-
-function genereerOverzichtPdf(klant){
-  const k = klanten.find(x=>x.naam===klant) || {};
-  const { jsPDF } = window.jspdf;
-  const doc = new jsPDF({ unit:'mm', format:'a4' });
-  const marge = 14, pageW = 210, breedte = pageW - marge*2;
-
-  // ---- Logo + ons bedrijf ----
-  doc.addImage(LOGO_BASE64, 'JPEG', marge, 11.6, 38.6, 22.4);
-  doc.setFontSize(11); doc.setFont(undefined,'bold');
-  doc.text('P.J.J.Vollebregt BV', marge+44, 14);
-  doc.setFont(undefined,'normal');
-  doc.text('Legmeerdijk 207', marge+44, 19);
-  doc.text('Aalsmeer', marge+44, 24);
-  doc.text('E-mail        youngplantsvollebregt@gmail.com', marge+44, 29);
-  doc.text('Whatsapp    06 15001022', marge+44, 34);
-
-  // ---- Klant / datum / saldo-uitleg ----
-  let y = 38;
-  doc.setLineWidth(0.4);
-  doc.setFontSize(11); doc.setFont(undefined,'bold');
-  doc.text(klant, marge, y);
-  doc.setFont(undefined,'normal');
-  doc.text('Datum: ' + new Date().toLocaleDateString('nl-NL'), pageW-marge, y, {align:'right'});
-  y += 5;
-  doc.setFontSize(9);
-  doc.text(k.woonplaats||'', marge, y);
-  doc.text('Groen is ons tegoed', pageW-marge, y, {align:'right'});
-  y += 5;
-  doc.text(k.email||'', marge, y);
-  doc.text('Saldo kunt u overboeken naar ons FH nr: 2881', pageW/2, y, {align:'center'});
-  doc.text('Rood is uw tegoed', pageW-marge, y, {align:'right'});
-  y += 4;
-  doc.line(marge, y, pageW-marge, y);
-
-  // ---- Tabel kolommen ----
-  const kol = [
-    {label:'Datum', w:22},
-    {label:'',      w:14}, // week
-    {label:'ID-nr', w:18},
-    {label:'cc-karren', w:26},
-    {label:'platen', w:26},
-    {label:'opzetstukken', w:28},
-    {label:'Bon', w:16},
-    {label:'Opmerking', w:30}
-  ];
-  let xpos = [];
-  let xc = marge;
-  kol.forEach(c=>{ xpos.push(xc); xc += c.w; });
-
-  // ---- Data + sortering (saldo eerst) ----
-  let rows = invoer.filter(r=>r.klant===klant).map(r=>({...r}));
-  rows.sort((a,b)=>{
-    const sA = (Math.abs(a.cc)>0 || Math.abs(a.platen)>0);
-    const sB = (Math.abs(b.cc)>0 || Math.abs(b.platen)>0);
-    if(sA && !sB) return -1;
-    if(!sA && sB) return 1;
-    return new Date(b.datum) - new Date(a.datum);
-  });
-  let tcc=0, tpl=0, top=0;
-  rows.forEach(r=>{ tcc+=r.cc; tpl+=r.platen; top+=r.opzet; });
-
-  // ---- Tabel header (grijze balk) ----
-  y += 2;
-  doc.setFillColor(216,216,216);
-  doc.rect(marge, y, breedte, 9, 'F');
-  doc.setFont(undefined,'bold'); doc.setFontSize(11);
-  doc.text('Datum', xpos[0]+2, y+6);
-  doc.text('ID-nr', xpos[2]+2, y+6);
-  doc.text('cc-karren', xpos[3]+kol[3].w/2, y+6, {align:'center'});
-  doc.text('platen', xpos[4]+kol[4].w/2, y+6, {align:'center'});
-  doc.text('opzetstukken', xpos[5]+kol[5].w/2, y+6, {align:'center'});
-  doc.text('Bon', xpos[6]+kol[6].w/2, y+6, {align:'center'});
-  doc.text('Opmerking', xpos[7]+2, y+6);
-  y += 9;
-
-  // ---- Huidig Saldo regel ----
-  doc.setFont(undefined,'bold'); doc.setFontSize(10);
-  doc.text('Huidig Saldo', xpos[0]+2, y+6);
-  pdfKleurCel(doc, tcc, xpos[3], y, kol[3].w, 8);
-  pdfKleurCel(doc, tpl, xpos[4], y, kol[4].w, 8);
-  pdfKleurCel(doc, top, xpos[5], y, kol[5].w, 8);
-  doc.setFont(undefined,'bold');
-  doc.text(String(tcc), xpos[3]+kol[3].w/2, y+6, {align:'center'});
-  doc.text(String(tpl), xpos[4]+kol[4].w/2, y+6, {align:'center'});
-  doc.text(String(top), xpos[5]+kol[5].w/2, y+6, {align:'center'});
-  y += 12;
-  doc.line(marge, y-3, pageW-marge, y-3);
-
-  // ---- Data rijen ----
-  doc.setFont(undefined,'normal'); doc.setFontSize(9);
-  rows.forEach(r=>{
-    if(y > 280){ doc.addPage(); y = 20; }
-    const rh = 5.5;
-    pdfKleurCel(doc, r.cc, xpos[3], y, kol[3].w, rh);
-    pdfKleurCel(doc, r.platen, xpos[4], y, kol[4].w, rh);
-    if(r.opzet) pdfKleurCel(doc, r.opzet, xpos[5], y, kol[5].w, rh);
-
-    const kortId = String(r.id||'').slice(-5);
-    doc.text(fmtDatum(r.datum), xpos[0], y+4);
-    doc.text(r.week, xpos[1]+2, y+4);
-    doc.text(kortId, xpos[2]+2, y+4);
-    doc.text(r.cc ? String(r.cc) : '', xpos[3]+kol[3].w/2, y+4, {align:'center'});
-    doc.text(r.platen ? String(r.platen) : '', xpos[4]+kol[4].w/2, y+4, {align:'center'});
-    doc.text(r.opzet ? String(r.opzet) : '', xpos[5]+kol[5].w/2, y+4, {align:'center'});
-    doc.text(r.bon ? String(r.bon) : '', xpos[6]+kol[6].w/2, y+4, {align:'center'});
-    doc.text(r.opmerking || (r.transporteur||''), xpos[7], y+4);
-    y += rh;
-  });
-
-  return doc;
-}
-
-// ---------- CSV / EXCEL EXPORT ----------
-function exportCsv(){
-  const kop = ['ID','Datum','Week','Klant','Bon','Transporteur','CC','Platen','Opzetstukken','Opmerking'];
-  const regels = [kop.join(';')];
-  [...invoer].sort((a,b)=>a.id-b.id).forEach(r=>{
-    const veld = [r.id, fmtDatum(r.datum), r.week, r.klant, r.bon||'', r.transporteur||'', r.cc, r.platen, r.opzet, (r.opmerking||'').replace(/;/g,',')];
-    regels.push(veld.join(';'));
-  });
-  const csv = '\uFEFF' + regels.join('\r\n');
-  const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = 'CC_Invoer_' + new Date().toISOString().slice(0,10) + '.csv';
-  a.click();
-}
-
-// ---------- TOTAALOVERZICHT ALLE KLANTEN ----------
-function exportTotaalPdf(){
-  const { jsPDF } = window.jspdf;
-  const doc = new jsPDF({ unit:'mm', format:'a4' });
-  const marge = 14, pageW = 210, breedte = pageW - marge*2;
-
-  doc.addImage(LOGO_BASE64, 'JPEG', marge, 8, 28, 16.3);
-  doc.setFontSize(15); doc.setFont(undefined,'bold');
-  doc.text('Totaaloverzicht saldi per klant', pageW/2 + 14, 17, {align:'center'});
-  doc.setFontSize(9); doc.setFont(undefined,'normal');
-  doc.text('Datum: ' + new Date().toLocaleDateString('nl-NL'), pageW-marge, 28, {align:'right'});
-
-  let y = 34;
-  doc.line(marge, y, pageW-marge, y);
-  y += 2;
-
-  const kol = [
-    {label:'Klant', w: breedte*0.40},
-    {label:'CC', w: breedte*0.20},
-    {label:'Platen', w: breedte*0.20},
-    {label:'Opzetstukken', w: breedte*0.20}
-  ];
-  let xpos = []; let xc = marge;
-  kol.forEach(c=>{ xpos.push(xc); xc += c.w; });
-
-  doc.setFillColor(216,216,216);
-  doc.rect(marge, y, breedte, 9, 'F');
-  doc.setFont(undefined,'bold'); doc.setFontSize(11);
-  doc.text('Klant', xpos[0]+2, y+6);
-  doc.text('CC', xpos[1]+kol[1].w/2, y+6, {align:'center'});
-  doc.text('Platen', xpos[2]+kol[2].w/2, y+6, {align:'center'});
-  doc.text('Opzetstukken', xpos[3]+kol[3].w/2, y+6, {align:'center'});
-  y += 9;
-
-  const totalen = [...klanten].sort((a,b)=>a.naam.localeCompare(b.naam,'nl')).map(k=>{
-    let cc=0, pl=0, op=0;
-    invoer.filter(r=>r.klant===k.naam).forEach(r=>{ cc+=r.cc; pl+=r.platen; op+=r.opzet; });
-    return { naam:k.naam, woonplaats:k.woonplaats, cc, pl, op };
-  });
-
-  doc.setFont(undefined,'normal'); doc.setFontSize(10);
-  totalen.forEach(t=>{
-    if(y > 280){ doc.addPage(); y = 20; }
-    const rh = 7;
-    pdfKleurCel(doc, t.cc, xpos[1], y, kol[1].w, rh);
-    pdfKleurCel(doc, t.pl, xpos[2], y, kol[2].w, rh);
-    pdfKleurCel(doc, t.op, xpos[3], y, kol[3].w, rh);
-
-    doc.text(t.naam + (t.woonplaats ? '  (' + t.woonplaats + ')' : ''), xpos[0]+2, y+5);
-    doc.text(String(t.cc), xpos[1]+kol[1].w/2, y+5, {align:'center'});
-    doc.text(String(t.pl), xpos[2]+kol[2].w/2, y+5, {align:'center'});
-    doc.text(String(t.op), xpos[3]+kol[3].w/2, y+5, {align:'center'});
-    y += rh;
-  });
-
-  doc.save('Totaaloverzicht_saldi_' + new Date().toISOString().slice(0,10) + '.pdf');
-}
-
-// kleurt een celvlak groen (positief) of rood (negatief)
-function pdfKleurCel(doc, val, x, y, w, h){
-  if(val > 0) doc.setFillColor(200,230,201);
-  else if(val < 0) doc.setFillColor(255,205,210);
-  else return;
-  doc.rect(x, y, w, h, 'F');
-}
-
-// ---------- MAIL ----------
-function mailOverzicht(){
-  const klant = document.getElementById('o-klant').value;
-  if(!klant){ alert('Kies eerst een klant.'); return; }
-  const k = klanten.find(x=>x.naam===klant) || {};
-  if(!k.email){ alert('Geen e-mailadres bekend voor deze klant.'); return; }
-
-  const cfg = laadEmailConfig();
-  const onderwerp = 'Fustoverzicht - ' + klant;
-  const tekst = `Mijnheer, Mevrouw,\n\nIn de bijlage vindt u het actuele overzicht van de cc-administratie.\n\nMet vriendelijke groet,\nArno Vollebregt`;
-  const status = document.getElementById('o-status');
-
-  if(cfg.url){
-    if(status) status.textContent = '⏳ Versturen...';
-
-    const doc = genereerOverzichtPdf(klant);
-    const pdfBase64 = doc.output('datauristring').split(',')[1];
-
-    fetch(cfg.url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // voorkomt CORS-preflight
-      body: JSON.stringify({
-        to_email: k.email,
-        onderwerp: onderwerp,
-        bericht: tekst,
-        attachment: pdfBase64,
-        attachment_name: 'Fustoverzicht_' + klant + '.pdf'
-      })
-    }).then(res => res.json())
-      .then(json => {
-        if(json.ok){
-          if(status) status.textContent = '✅ Verzonden naar ' + k.email;
-          logVerzending(klant, k.email);
-        } else {
-          if(status) status.textContent = '❌ Versturen mislukt: ' + json.error;
-        }
-      })
-      .catch(err => {
-        if(status) status.textContent = '❌ Versturen mislukt (verbinding).';
-        console.error(err);
-      });
-  } else {
-    // fallback: mailto (geen automatische bijlage)
-    const subject = encodeURIComponent(onderwerp);
-    const body = encodeURIComponent(tekst + '\n\n(Voeg de PDF zelf toe via de 📄-knop)');
-    window.location.href = `mailto:${k.email}?subject=${subject}&body=${body}`;
-    logVerzending(klant, k.email);
-  }
-}
-
-// ---------- VERZENDLIJST ----------
-function logVerzending(klant, email){
-  let lijst = laad('cc_verzonden');
-  const nu = new Date();
-  const item = {
-    id: Date.now(),
-    klant,
-    email,
-    datum: nu.toISOString().slice(0,10),
-    tijd: nu.toLocaleTimeString('nl-NL', {hour:'2-digit', minute:'2-digit'})
-  };
-  lijst.push(item);
-  bewaarEnSync('cc_verzonden', lijst);
-  if(window.fbSaveVerzonden) window.fbSaveVerzonden(item);
-  toonVerzendlijst();
-}
-
-function verwijderVerzending(id){
-  let lijst = laad('cc_verzonden');
-  lijst = lijst.filter(v=>v.id!==id);
-  bewaarEnSync('cc_verzonden', lijst);
-  if(window.fbDeleteVerzonden) window.fbDeleteVerzonden(id);
-  toonVerzendlijst();
-}
-
-function toonVerzendlijst(){
-  const lijst = laad('cc_verzonden').slice(-20).reverse();
-  const el = document.getElementById('o-verzendlijst');
-  if(!el) return;
-  if(lijst.length === 0){
-    el.innerHTML = '<div class="small">Nog niets gemaild.</div>';
-    return;
-  }
-  el.innerHTML = '<table><thead><tr><th>Datum</th><th>Tijd</th><th>Klant</th><th>E-mail</th><th></th></tr></thead><tbody>' +
-    lijst.map(v=>`<tr><td>${fmtDatum(v.datum)}</td><td>${v.tijd}</td><td>${v.klant}</td><td>${v.email}</td>
-      <td><button class="danger" style="padding:2px 6px;font-size:11px;" onclick="verwijderVerzending(${v.id})">x</button></td></tr>`).join('') +
-    '</tbody></table>';
-}
-
-
-// ---------- EMAIL CONFIG (Google Apps Script webhook) ----------
-function laadEmailConfig(){
-  return laad('cc_email_cfg') || {};
-}
-function opslaanEmailConfig(){
-  const cfg = { url: document.getElementById('cfg-url').value.trim() };
-  bewaar('cc_email_cfg', cfg);
-  if(window.fbSaveEmailConfig) window.fbSaveEmailConfig(cfg);
-  document.getElementById('cfg-status').textContent = '✅ Opgeslagen.';
-}
-function vulEmailConfigVelden(){
-  const cfg = laadEmailConfig();
-  if(cfg.url) document.getElementById('cfg-url').value = cfg.url;
-}
-
-// ---------- SYNC: CLOUD VIA GOOGLE APPS SCRIPT ----------
-// ---------- SYNC: BACKUP EXPORT/IMPORT ----------
-function exportBackup(){
-  const data = {
-    klanten: laad('cc_klanten'),
-    invoer: laad('cc_invoer'),
-    verzonden: laad('cc_verzonden'),
-    email_instellingen: laad('cc_email_cfg')
-  };
-  const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = 'CC_Beheer_backup_' + new Date().toISOString().slice(0,10) + '.json';
-  a.click();
-}
-
-function importBackup(ev){
-  const file = ev.target.files[0];
-  if(!file) return;
-  const reader = new FileReader();
-  reader.onload = async function(e){
-    try{
-      const data = JSON.parse(e.target.result);
-      if(!confirm('Huidige gegevens overschrijven met de backup (en naar de cloud sturen)?')) return;
-
-      if(data.klanten) bewaar('cc_klanten', data.klanten);
-      if(data.invoer) bewaar('cc_invoer', data.invoer);
-      if(data.verzonden) bewaar('cc_verzonden', data.verzonden);
-      if(data.email_instellingen) bewaar('cc_email_cfg', data.email_instellingen);
-
-      // Ook naar Firebase schrijven, zodat alle apparaten dit krijgen
-      if(window.fbSaveKlant && data.klanten){
-        for(const k of data.klanten) await window.fbSaveKlant(k);
-      }
-      if(window.fbSaveInvoer && data.invoer){
-        for(const r of data.invoer) await window.fbSaveInvoer(r);
-      }
-      if(window.fbSaveVerzonden && data.verzonden){
-        for(const v of data.verzonden) await window.fbSaveVerzonden(v);
-      }
-      if(window.fbSaveEmailConfig && data.email_instellingen?.url){
-        await window.fbSaveEmailConfig(data.email_instellingen);
-      }
-
-      alert('✅ Backup geladen en naar de cloud gestuurd. De pagina wordt nu vernieuwd.');
-      location.reload();
-    }catch(err){
-      alert('❌ Ongeldig backup-bestand: ' + err);
-    }
-  };
-  reader.readAsText(file);
-}
-
-// ---------- KLANTEN ----------
-let bewerkKlantNaam = null;
-
-function opslaanKlant(){
-  const naam = document.getElementById('k-naam').value.trim();
-  if(!naam){ document.getElementById('k-status').textContent='❌ Naam verplicht.'; return; }
-  const data = {
-    naam,
-    adres: document.getElementById('k-adres').value.trim(),
-    woonplaats: document.getElementById('k-woonplaats').value.trim(),
-    telefoon: document.getElementById('k-telefoon').value.trim(),
-    email: document.getElementById('k-email').value.trim(),
-    transporteur: document.getElementById('k-transporteur').value.trim()
-  };
-
-  if(bewerkKlantNaam){
-    // update bestaande klant, en evt. naam in invoer aanpassen
-    const idx = klanten.findIndex(k=>k.naam===bewerkKlantNaam);
-    if(idx>-1) klanten[idx] = data;
-    if(bewerkKlantNaam !== naam){
-      invoer.forEach(r=>{
-        if(r.klant===bewerkKlantNaam){
-          r.klant = naam;
-          if(window.fbSaveInvoer) window.fbSaveInvoer(r);
-        }
-      });
-      bewaarEnSync('cc_invoer', invoer);
-      if(window.fbDeleteKlant) window.fbDeleteKlant(bewerkKlantNaam);
-    }
-    document.getElementById('k-status').textContent='✅ Gewijzigd.';
-    bewerkKlantNaam = null;
-    document.querySelector('#tab-klanten button').textContent = '➕ Klant toevoegen';
-  } else {
-    klanten.push(data);
-    document.getElementById('k-status').textContent='✅ Toegevoegd.';
-  }
-
-  bewaarEnSync('cc_klanten', klanten);
-  if(window.fbSaveKlant) window.fbSaveKlant(data);
-  ['k-naam','k-adres','k-woonplaats','k-telefoon','k-email','k-transporteur'].forEach(id=>document.getElementById(id).value='');
-  vulKlantSelects();
-  toonKlanten();
-}
-
-function bewerkKlant(naam){
-  const k = klanten.find(x=>x.naam===naam);
-  if(!k) return;
-  bewerkKlantNaam = naam;
-  document.getElementById('k-naam').value = k.naam;
-  document.getElementById('k-adres').value = k.adres||'';
-  document.getElementById('k-woonplaats').value = k.woonplaats||'';
-  document.getElementById('k-telefoon').value = k.telefoon||'';
-  document.getElementById('k-email').value = k.email||'';
-  document.getElementById('k-transporteur').value = k.transporteur||'';
-  document.querySelector('#tab-klanten button').textContent = '💾 Wijziging opslaan';
-  document.getElementById('k-naam').scrollIntoView({behavior:'smooth'});
-}
-function verwijderKlant(naam){
-  if(!confirm('Klant "'+naam+'" verwijderen?')) return;
-  klanten = klanten.filter(k=>k.naam!==naam);
-  bewaarEnSync('cc_klanten', klanten);
-  if(window.fbDeleteKlant) window.fbDeleteKlant(naam);
-  vulKlantSelects();
-  toonKlanten();
-}
-function toonKlanten(){
-  const gesorteerd = [...klanten].sort((a,b)=>a.naam.localeCompare(b.naam,'nl'));
-  document.getElementById('k-lijst').innerHTML = gesorteerd.map(k=>
-    `<div class="card" style="padding:8px 10px; display:flex; align-items:center; gap:8px; flex-wrap:nowrap;">
-       <div style="flex:1; min-width:0; overflow:hidden;">
-         <b>${k.naam}</b> <span class="badge">${k.woonplaats||''}</span>
-         <div class="small" style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${k.email||''} ${k.telefoon||''}</div>
-       </div>
-       <div class="item-actions" style="margin:0; flex-shrink:0;">
-         <button class="secondary" style="padding:6px 8px;" title="Bewerken" onclick="bewerkKlant('${k.naam}')">✏️</button>
-         <button class="danger" style="padding:6px 8px;" title="Verwijderen" onclick="verwijderKlant('${k.naam}')">🗑️</button>
-       </div>
-     </div>`
-  ).join('') || '<div class="small">Nog geen klanten toegevoegd.</div>';
-}
-
-// ---------- INIT ----------
+const LOGO_BASE64="data:image/jpeg;base64,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";
+let thema=localStorage.getItem('cc_thema')||'light';
+document.documentElement.setAttribute('data-theme',thema);
+function toggleThema(){thema=(thema==='light')?'dark':'light';document.documentElement.setAttribute('data-theme',thema);localStorage.setItem('cc_thema',thema);}
+function vulTransporteur(){const klant=document.getElementById('i-klant').value;const k=klanten.find(x=>x.naam===klant);document.getElementById('i-transporteur').value=(k&&k.transporteur)?k.transporteur:'';}
+function volgendInvoerId(){let max=0;invoer.forEach(r=>{if(r.id>max)max=r.id;});return max+1;}
+function laad(key){try{return JSON.parse(localStorage.getItem(key))||[];}catch(e){return[];}}
+function bewaar(key,data){localStorage.setItem(key,JSON.stringify(data));}
+function bewaarEnSync(key,data){bewaar(key,data);}
+function toonSyncIndicator(tekst){const el=document.getElementById('sync-indicator');if(el)el.textContent=tekst;if(tekst&&tekst.indexOf('&#9729;')===0){setTimeout(()=>{if(el&&el.textContent===tekst)el.textContent='';},2000);}}
+var klanten=laad('cc_klanten');
+var invoer=laad('cc_invoer');
+document.querySelectorAll('.tab').forEach(t=>{t.onclick=()=>{document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));document.querySelectorAll('.content>.card').forEach(x=>x.classList.add('hidden'));t.classList.add('active');document.getElementById('tab-'+t.dataset.tab).classList.remove('hidden');if(t.dataset.tab==='overzicht'){toonOverzicht();toonVerzendlijst();}if(t.dataset.tab==='klanten'){toonKlanten();vulEmailConfigVelden();}if(t.dataset.tab==='invoer')toonLaatsteInvoer();};});
+function getISOWeek(date){const d=new Date(date.getTime());d.setHours(0,0,0,0);d.setDate(d.getDate()+4-(d.getDay()||7));const yearStart=new Date(d.getFullYear(),0,1);return Math.ceil((((d-yearStart)/86400000)+1)/7);}
+function vulKlantSelects(){const gesorteerd=[...klanten].sort((a,b)=>a.naam.localeCompare(b.naam,'nl'));const opts=gesorteerd.map(k=>`<option value="${k.naam}">${k.naam}</option>`).join('');document.getElementById('i-klant').innerHTML='<option value="">-- kies klant --</option>'+opts;document.getElementById('o-klant').innerHTML='<option value="">-- kies klant --</option><option value="__totaal__">&#128202; Totaaloverzicht alle klanten</option>'+opts;}
+function fmtDatum(iso){const d=new Date(iso);return d.toLocaleDateString('nl-NL',{day:'2-digit',month:'2-digit',year:'numeric'});}
+document.getElementById('i-datum').value=new Date().toISOString().slice(0,10);
+let bewerkInvoerId=null;
+function opslaanInvoer(){const klant=document.getElementById('i-klant').value;const datum=document.getElementById('i-datum').value;if(!klant){document.getElementById('i-status').textContent='&#10060; Kies een klant.';return;}if(!datum){document.getElementById('i-status').textContent='&#10060; Kies een datum.';return;}const veld={klant,datum,week:'wk '+getISOWeek(new Date(datum)),bon:document.getElementById('i-bon').value.trim(),transporteur:document.getElementById('i-transporteur').value.trim(),cc:Number(document.getElementById('i-cc').value)||0,platen:Number(document.getElementById('i-platen').value)||0,opzet:Number(document.getElementById('i-opzet').value)||0,opmerking:document.getElementById('i-opmerking').value.trim()};let opgeslagenItem;if(bewerkInvoerId){const idx=invoer.findIndex(r=>r.id===bewerkInvoerId);if(idx>-1)invoer[idx]=Object.assign({id:bewerkInvoerId},veld);opgeslagenItem=invoer[idx];bewerkInvoerId=null;document.querySelector('#tab-invoer button').textContent='&#10003;&#65039; Opslaan';document.getElementById('i-status').textContent='&#10003;&#65039; Wijziging opgeslagen voor '+klant;}else{veld.id=volgendInvoerId();invoer.push(veld);opgeslagenItem=veld;document.getElementById('i-status').textContent='&#10003;&#65039; Opgeslagen voor '+klant;}bewaarEnSync('cc_invoer',invoer);if(window.fbSaveInvoer)window.fbSaveInvoer(opgeslagenItem);document.getElementById('i-cc').value='';document.getElementById('i-platen').value='';document.getElementById('i-opzet').value='';document.getElementById('i-opmerking').value='';document.getElementById('i-transporteur').value='';document.getElementById('i-bon').value='';toonLaatsteInvoer();}
+function bewerkInvoer(id){const r=invoer.find(x=>x.id===id);if(!r)return;bewerkInvoerId=id;document.getElementById('i-klant').value=r.klant;document.getElementById('i-datum').value=r.datum;document.getElementById('i-bon').value=r.bon;document.getElementById('i-cc').value=r.cc;document.getElementById('i-platen').value=r.platen;document.getElementById('i-opzet').value=r.opzet;document.getElementById('i-opmerking').value=r.opmerking;document.getElementById('i-transporteur').value=r.transporteur||'';document.querySelector('#tab-invoer button').textContent='&#128190; Wijziging opslaan';document.getElementById('i-klant').scrollIntoView({behavior:'smooth'});}
+function printBon(id){const r=invoer.find(x=>x.id===id);if(!r)return;const k=klanten.find(x=>x.naam===r.klant)||{};const{jsPDF}=window.jspdf;const doc=new jsPDF({format:'a4',unit:'mm'});const pageW=210,marge=14,breedte=pageW-marge*2;doc.addImage(LOGO_BASE64,'JPEG',marge,6,37,21.5);doc.setFontSize(22);doc.setFont(undefined,'bold');doc.text('Vollebregt Cyclamen',pageW/2+17,17,{align:'center'});doc.setLineWidth(0.6);doc.line(marge,31,pageW-marge,31);let y=40;doc.setFontSize(11);doc.setFont(undefined,'normal');doc.text('ID:',marge,y);doc.setFont(undefined,'bold');doc.text(String(r.id).slice(-5),marge+10,y);doc.setFont(undefined,'normal');doc.text(fmtDatum(r.datum),pageW/2,y,{align:'center'});if(r.bon)doc.text('Bon: '+r.bon,pageW-marge,y,{align:'right'});y+=4;doc.line(marge,y,pageW-marge,y);y+=6;doc.text('Afleveradres:',marge,y);y+=6.5;doc.setFontSize(15);doc.setFont(undefined,'bold');doc.text(r.klant,marge,y);doc.setFontSize(11);doc.setFont(undefined,'normal');doc.text('Transporteur: '+(r.transporteur||'-'),pageW/2+11,y);y+=6.5;doc.text(k.adres||'',marge,y);y+=5.5;doc.text(k.woonplaats||'',marge,y);doc.text('Tel: '+(k.telefoon||''),pageW/2+11,y);y+=5;doc.line(marge,y,pageW-marge,y);y+=5;const c2=marge+breedte*0.42,c3=marge+breedte*0.655,c4=marge+breedte*0.89;doc.setFillColor(215,215,215);doc.rect(marge,y,breedte,21,'F');doc.setFont(undefined,'bold');doc.setFontSize(13);doc.text('cc',c2,y+7,{align:'center'});doc.text('platen',c3,y+7,{align:'center'});doc.text('opzetstuk',c4,y+7,{align:'center'});doc.setFontSize(17);doc.text('Aantallen:',marge+5,y+16);doc.text(String(r.cc),c2,y+16,{align:'center'});doc.text(String(r.platen),c3,y+16,{align:'center'});doc.text(String(r.opzet),c4,y+16,{align:'center'});doc.setFontSize(11);doc.setFont(undefined,'normal');y+=21;doc.line(marge,y,pageW-marge,y);if(r.opmerking){y+=6;const opm=doc.splitTextToSize(r.opmerking,breedte);doc.text(opm,marge,y);y+=(opm.length-1)*5.5;}y+=6;doc.line(marge,y,pageW-marge,y);let sRows=invoer.filter(x=>x.klant===r.klant&&new Date(x.datum)<=new Date(r.datum));let sCC=0,sPL=0,sOP=0;sRows.forEach(x=>{sCC+=x.cc;sPL+=x.platen;sOP+=x.opzet;});y+=6;doc.setFont(undefined,'bold');doc.text('Actueel Nieuw Saldo',marge,y);doc.setFont(undefined,'normal');y+=3;const boxY=y;doc.setFontSize(9);const tX=marge+42+20+6,tW=(pageW-marge)-tX;const tekst=['Wilt u er voor zorgdragen dat het saldo binnen 5 werkdagen retour gebracht','wordt, of overgeboekt naar ons FH nummer: 2881.','Na 5 werkdagen kunnen we kosten in rekening brengen.','Positief is ons tegoed, negatief is uw tegoed.'];let ty=boxY+5;tekst.forEach(t=>{doc.text(doc.splitTextToSize(t,tW),tX,ty);ty+=5;});doc.setFontSize(11);y=boxY;[['CC',sCC],['Platen',sPL],['Opzetstukken',sOP]].forEach(([l,v])=>{doc.rect(marge,y,42,7.7);doc.rect(marge+42,y,20,7.7);doc.text(l,marge+3,y+5.5);doc.text(String(v),marge+42+10,y+5.5,{align:'center'});y+=7.7;});doc.save('Bon_'+(r.bon||r.id)+'_'+r.klant+'.pdf');}
+function toonLaatsteInvoer(){const alle=[...invoer].reverse();const tbody=document.querySelector('#i-laatste tbody');tbody.innerHTML=alle.map(r=>`<tr><td>${fmtDatum(r.datum)}</td><td>${r.klant}</td><td>${r.cc}/${r.platen}/${r.opzet}</td><td style="white-space:nowrap;"><button class="secondary" style="padding:5px 9px;font-size:15px;margin-right:4px;" onclick="bewerkInvoer(${r.id})">&#9999;&#65039;</button><button class="secondary" style="padding:5px 9px;font-size:15px;margin-right:4px;" onclick="printBon(${r.id})">&#128424;&#65039;</button><button class="danger" style="padding:5px 10px;font-size:14px;" onclick="verwijderInvoer(${r.id})">&#10005;</button></td></tr>`).join('');}
+function verwijderInvoer(id){invoer=invoer.filter(r=>r.id!==id);bewaarEnSync('cc_invoer',invoer);if(window.fbDeleteInvoer)window.fbDeleteInvoer(id);toonLaatsteInvoer();}
+function kleurCel(val){if(val>0)return'background:#c8e6c9;';if(val<0)return'background:#ffcdd2;';return'';}
+function toonOverzicht(){const klant=document.getElementById('o-klant').value;const tbody=document.querySelector('#o-tabel tbody');const thead=document.querySelector('#o-tabel thead tr');const acties=document.querySelector('#tab-overzicht .item-actions');tbody.innerHTML='';document.getElementById('o-klantinfo').textContent='';document.getElementById('o-totcc').textContent='CC: 0';document.getElementById('o-totplaten').textContent='Platen: 0';document.getElementById('o-totopzet').textContent='Opzet: 0';if(klant==='__totaal__'){document.getElementById('o-tabel').className='modus-totaal';thead.innerHTML='<th>Klant</th><th>CC</th><th>Platen</th><th>Opzetstukken</th>';acties.style.display='none';const totalen=[...klanten].sort((a,b)=>a.naam.localeCompare(b.naam,'nl')).map(k=>{let cc=0,pl=0,op=0;invoer.filter(r=>r.klant===k.naam).forEach(r=>{cc+=r.cc;pl+=r.platen;op+=r.opzet;});return{naam:k.naam,cc,pl,op};});let tcc=0,tpl=0,top=0;totalen.forEach(t=>{tcc+=t.cc;tpl+=t.pl;top+=t.op;tbody.innerHTML+=`<tr><td>${t.naam}</td><td style="${kleurCel(t.cc)}">${t.cc}</td><td style="${kleurCel(t.pl)}">${t.pl}</td><td style="${kleurCel(t.op)}">${t.op}</td></tr>`;});document.getElementById('o-totcc').textContent='CC: '+tcc;document.getElementById('o-totplaten').textContent='Platen: '+tpl;document.getElementById('o-totopzet').textContent='Opzet: '+top;return;}document.getElementById('o-tabel').className='modus-klant';thead.innerHTML='<th>Datum</th><th>Wk</th><th>Bon</th><th>CC</th><th>Platen</th><th>Opzet</th><th>Opm.</th>';acties.style.display='flex';if(!klant)return;const k=klanten.find(x=>x.naam===klant);if(k)document.getElementById('o-klantinfo').textContent=`${k.adres||''} ${k.woonplaats||''} · ${k.email||''}`;let rows=invoer.filter(r=>r.klant===klant);rows.sort((a,b)=>{const sA=(Math.abs(a.cc)>0||Math.abs(a.platen)>0),sB=(Math.abs(b.cc)>0||Math.abs(b.platen)>0);if(sA&&!sB)return -1;if(!sA&&sB)return 1;return new Date(b.datum)-new Date(a.datum);});let tcc=0,tpl=0,top=0;rows.forEach(r=>{tcc+=r.cc;tpl+=r.platen;top+=r.opzet;tbody.innerHTML+=`<tr><td>${fmtDatum(r.datum)}</td><td>${r.week}</td><td>${r.bon}</td><td style="${kleurCel(r.cc)}">${r.cc}</td><td style="${kleurCel(r.platen)}">${r.platen}</td><td style="${kleurCel(r.opzet)}">${r.opzet}</td><td>${r.opmerking||''}</td></tr>`;});document.getElementById('o-totcc').textContent='CC: '+tcc;document.getElementById('o-totplaten').textContent='Platen: '+tpl;document.getElementById('o-totopzet').textContent='Opzet: '+top;}
+function exportPdf(){const klant=document.getElementById('o-klant').value;if(!klant){alert('Kies eerst een klant.');return;}genereerOverzichtPdf(klant).save('Fustoverzicht_'+klant+'.pdf');}
+function genereerOverzichtPdf(klant){const k=klanten.find(x=>x.naam===klant)||{};const{jsPDF}=window.jspdf;const doc=new jsPDF({unit:'mm',format:'a4'});const marge=14,pageW=210,breedte=pageW-marge*2;doc.addImage(LOGO_BASE64,'JPEG',marge,11.6,38.6,22.4);doc.setFontSize(11);doc.setFont(undefined,'bold');doc.text('P.J.J.Vollebregt BV',marge+44,14);doc.setFont(undefined,'normal');doc.text('Legmeerdijk 207',marge+44,19);doc.text('Aalsmeer',marge+44,24);doc.text('E-mail        youngplantsvollebregt@gmail.com',marge+44,29);doc.text('Whatsapp    06 15001022',marge+44,34);let y=38;doc.setLineWidth(0.4);doc.setFontSize(11);doc.setFont(undefined,'bold');doc.text(klant,marge,y);doc.setFont(undefined,'normal');doc.text('Datum: '+new Date().toLocaleDateString('nl-NL'),pageW-marge,y,{align:'right'});y+=5;doc.setFontSize(9);doc.text(k.woonplaats||'',marge,y);doc.text('Groen is ons tegoed',pageW-marge,y,{align:'right'});y+=5;doc.text(k.email||'',marge,y);doc.text('Saldo kunt u overboeken naar ons FH nr: 2881',pageW/2,y,{align:'center'});doc.text('Rood is uw tegoed',pageW-marge,y,{align:'right'});y+=4;doc.line(marge,y,pageW-marge,y);const kol=[{label:'Datum',w:22},{label:'',w:14},{label:'ID-nr',w:18},{label:'cc-karren',w:26},{label:'platen',w:26},{label:'opzetstukken',w:28},{label:'Bon',w:16},{label:'Opmerking',w:30}];let xpos=[],xc=marge;kol.forEach(c=>{xpos.push(xc);xc+=c.w;});let rows=invoer.filter(r=>r.klant===klant).map(r=>({...r}));rows.sort((a,b)=>{const sA=(Math.abs(a.cc)>0||Math.abs(a.platen)>0),sB=(Math.abs(b.cc)>0||Math.abs(b.platen)>0);if(sA&&!sB)return -1;if(!sA&&sB)return 1;return new Date(b.datum)-new Date(a.datum);});let tcc=0,tpl=0,top=0;rows.forEach(r=>{tcc+=r.cc;tpl+=r.platen;top+=r.opzet;});y+=2;doc.setFillColor(216,216,216);doc.rect(marge,y,breedte,9,'F');doc.setFont(undefined,'bold');doc.setFontSize(11);doc.text('Datum',xpos[0]+2,y+6);doc.text('ID-nr',xpos[2]+2,y+6);doc.text('cc-karren',xpos[3]+kol[3].w/2,y+6,{align:'center'});doc.text('platen',xpos[4]+kol[4].w/2,y+6,{align:'center'});doc.text('opzetstukken',xpos[5]+kol[5].w/2,y+6,{align:'center'});doc.text('Bon',xpos[6]+kol[6].w/2,y+6,{align:'center'});doc.text('Opmerking',xpos[7]+2,y+6);y+=9;doc.setFont(undefined,'bold');doc.setFontSize(10);doc.text('Huidig Saldo',xpos[0]+2,y+6);pdfKleurCel(doc,tcc,xpos[3],y,kol[3].w,8);pdfKleurCel(doc,tpl,xpos[4],y,kol[4].w,8);pdfKleurCel(doc,top,xpos[5],y,kol[5].w,8);doc.setFont(undefined,'bold');doc.text(String(tcc),xpos[3]+kol[3].w/2,y+6,{align:'center'});doc.text(String(tpl),xpos[4]+kol[4].w/2,y+6,{align:'center'});doc.text(String(top),xpos[5]+kol[5].w/2,y+6,{align:'center'});y+=12;doc.line(marge,y-3,pageW-marge,y-3);doc.setFont(undefined,'normal');doc.setFontSize(9);rows.forEach(r=>{if(y>280){doc.addPage();y=20;}const rh=5.5;pdfKleurCel(doc,r.cc,xpos[3],y,kol[3].w,rh);pdfKleurCel(doc,r.platen,xpos[4],y,kol[4].w,rh);if(r.opzet)pdfKleurCel(doc,r.opzet,xpos[5],y,kol[5].w,rh);const kortId=String(r.id||'').slice(-5);doc.text(fmtDatum(r.datum),xpos[0],y+4);doc.text(r.week,xpos[1]+2,y+4);doc.text(kortId,xpos[2]+2,y+4);doc.text(r.cc?String(r.cc):'',xpos[3]+kol[3].w/2,y+4,{align:'center'});doc.text(r.platen?String(r.platen):'',xpos[4]+kol[4].w/2,y+4,{align:'center'});doc.text(r.opzet?String(r.opzet):'',xpos[5]+kol[5].w/2,y+4,{align:'center'});doc.text(r.bon?String(r.bon):'',xpos[6]+kol[6].w/2,y+4,{align:'center'});doc.text(r.opmerking||(r.transporteur||''),xpos[7],y+4);y+=rh;});return doc;}
+function exportCsv(){const kop=['ID','Datum','Week','Klant','Bon','Transporteur','CC','Platen','Opzetstukken','Opmerking'];const regels=[kop.join(';')];[...invoer].sort((a,b)=>a.id-b.id).forEach(r=>{regels.push([r.id,fmtDatum(r.datum),r.week,r.klant,r.bon||'',r.transporteur||'',r.cc,r.platen,r.opzet,(r.opmerking||'').replace(/;/g,',')].join(';'));});const blob=new Blob(['﻿'+regels.join('
+')],{type:'text/csv;charset=utf-8;'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='CC_Invoer_'+new Date().toISOString().slice(0,10)+'.csv';a.click();}
+function exportTotaalPdf(){const{jsPDF}=window.jspdf;const doc=new jsPDF({unit:'mm',format:'a4'});const marge=14,pageW=210,breedte=pageW-marge*2;doc.addImage(LOGO_BASE64,'JPEG',marge,8,28,16.3);doc.setFontSize(15);doc.setFont(undefined,'bold');doc.text('Totaaloverzicht saldi per klant',pageW/2+14,17,{align:'center'});doc.setFontSize(9);doc.setFont(undefined,'normal');doc.text('Datum: '+new Date().toLocaleDateString('nl-NL'),pageW-marge,28,{align:'right'});let y=34;doc.line(marge,y,pageW-marge,y);y+=2;const kol=[{label:'Klant',w:breedte*0.40},{label:'CC',w:breedte*0.20},{label:'Platen',w:breedte*0.20},{label:'Opzetstukken',w:breedte*0.20}];let xpos=[],xc=marge;kol.forEach(c=>{xpos.push(xc);xc+=c.w;});doc.setFillColor(216,216,216);doc.rect(marge,y,breedte,9,'F');doc.setFont(undefined,'bold');doc.setFontSize(11);doc.text('Klant',xpos[0]+2,y+6);doc.text('CC',xpos[1]+kol[1].w/2,y+6,{align:'center'});doc.text('Platen',xpos[2]+kol[2].w/2,y+6,{align:'center'});doc.text('Opzetstukken',xpos[3]+kol[3].w/2,y+6,{align:'center'});y+=9;const totalen=[...klanten].sort((a,b)=>a.naam.localeCompare(b.naam,'nl')).map(k=>{let cc=0,pl=0,op=0;invoer.filter(r=>r.klant===k.naam).forEach(r=>{cc+=r.cc;pl+=r.platen;op+=r.opzet;});return{naam:k.naam,woonplaats:k.woonplaats,cc,pl,op};});doc.setFont(undefined,'normal');doc.setFontSize(10);totalen.forEach(t=>{if(y>280){doc.addPage();y=20;}const rh=7;pdfKleurCel(doc,t.cc,xpos[1],y,kol[1].w,rh);pdfKleurCel(doc,t.pl,xpos[2],y,kol[2].w,rh);pdfKleurCel(doc,t.op,xpos[3],y,kol[3].w,rh);doc.text(t.naam+(t.woonplaats?'  ('+t.woonplaats+')':''),xpos[0]+2,y+5);doc.text(String(t.cc),xpos[1]+kol[1].w/2,y+5,{align:'center'});doc.text(String(t.pl),xpos[2]+kol[2].w/2,y+5,{align:'center'});doc.text(String(t.op),xpos[3]+kol[3].w/2,y+5,{align:'center'});y+=rh;});doc.save('Totaaloverzicht_saldi_'+new Date().toISOString().slice(0,10)+'.pdf');}
+function pdfKleurCel(doc,val,x,y,w,h){if(val>0)doc.setFillColor(200,230,201);else if(val<0)doc.setFillColor(255,205,210);else return;doc.rect(x,y,w,h,'F');}
+function mailOverzicht(){const klant=document.getElementById('o-klant').value;if(!klant){alert('Kies eerst een klant.');return;}const k=klanten.find(x=>x.naam===klant)||{};if(!k.email){alert('Geen e-mailadres bekend voor deze klant.');return;}const cfg=laadEmailConfig();const onderwerp='Fustoverzicht - '+klant;const tekst='Mijnheer, Mevrouw,\n\nIn de bijlage vindt u het actuele overzicht van de cc-administratie.\n\nMet vriendelijke groet,\nArno Vollebregt';const status=document.getElementById('o-status');if(cfg.url){if(status)status.textContent='&#9203; Versturen...';const doc=genereerOverzichtPdf(klant);const pdfBase64=doc.output('datauristring').split(',')[1];fetch(cfg.url,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({to_email:k.email,onderwerp,bericht:tekst,attachment:pdfBase64,attachment_name:'Fustoverzicht_'+klant+'.pdf'})}).then(res=>res.json()).then(json=>{if(json.ok){if(status)status.textContent='&#10003;&#65039; Verzonden naar '+k.email;logVerzending(klant,k.email);}else{if(status)status.textContent='&#10060; Versturen mislukt: '+json.error;}}).catch(err=>{if(status)status.textContent='&#10060; Versturen mislukt (verbinding).';});}else{window.location.href='mailto:'+k.email+'?subject='+encodeURIComponent(onderwerp)+'&body='+encodeURIComponent(tekst);logVerzending(klant,k.email);}}
+function logVerzending(klant,email){let lijst=laad('cc_verzonden');const nu=new Date();const item={id:Date.now(),klant,email,datum:nu.toISOString().slice(0,10),tijd:nu.toLocaleTimeString('nl-NL',{hour:'2-digit',minute:'2-digit'})};lijst.push(item);bewaarEnSync('cc_verzonden',lijst);if(window.fbSaveVerzonden)window.fbSaveVerzonden(item);toonVerzendlijst();}
+function verwijderVerzending(id){let lijst=laad('cc_verzonden');lijst=lijst.filter(v=>v.id!==id);bewaarEnSync('cc_verzonden',lijst);if(window.fbDeleteVerzonden)window.fbDeleteVerzonden(id);toonVerzendlijst();}
+function toonVerzendlijst(){const lijst=laad('cc_verzonden').slice(-20).reverse();const el=document.getElementById('o-verzendlijst');if(!el)return;if(!lijst.length){el.innerHTML='<div class="small">Nog niets gemaild.</div>';return;}el.innerHTML='<table><thead><tr><th>Datum</th><th>Tijd</th><th>Klant</th><th>E-mail</th><th></th></tr></thead><tbody>'+lijst.map(v=>`<tr><td>${fmtDatum(v.datum)}</td><td>${v.tijd}</td><td>${v.klant}</td><td>${v.email}</td><td><button class="danger" style="padding:2px 6px;font-size:11px;" onclick="verwijderVerzending(${v.id})">x</button></td></tr>`).join('')+'</tbody></table>';}
+function laadEmailConfig(){return laad('cc_email_cfg')||{};}
+function opslaanEmailConfig(){const cfg={url:document.getElementById('cfg-url').value.trim()};bewaar('cc_email_cfg',cfg);if(window.fbSaveEmailConfig)window.fbSaveEmailConfig(cfg);document.getElementById('cfg-status').textContent='&#10003;&#65039; Opgeslagen.';}
+function vulEmailConfigVelden(){const cfg=laadEmailConfig();if(cfg.url)document.getElementById('cfg-url').value=cfg.url;}
+function exportBackup(){const data={klanten:laad('cc_klanten'),invoer:laad('cc_invoer'),verzonden:laad('cc_verzonden'),email_instellingen:laad('cc_email_cfg')};const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='CC_Beheer_backup_'+new Date().toISOString().slice(0,10)+'.json';a.click();}
+function importBackup(ev){const file=ev.target.files[0];if(!file)return;const reader=new FileReader();reader.onload=async function(e){try{const data=JSON.parse(e.target.result);if(!confirm('Huidige gegevens overschrijven met de backup (en naar de cloud sturen)?'))return;if(data.klanten)bewaar('cc_klanten',data.klanten);if(data.invoer)bewaar('cc_invoer',data.invoer);if(data.verzonden)bewaar('cc_verzonden',data.verzonden);if(data.email_instellingen)bewaar('cc_email_cfg',data.email_instellingen);if(window.fbSaveKlant&&data.klanten)for(const k of data.klanten)await window.fbSaveKlant(k);if(window.fbSaveInvoer&&data.invoer)for(const r of data.invoer)await window.fbSaveInvoer(r);if(window.fbSaveVerzonden&&data.verzonden)for(const v of data.verzonden)await window.fbSaveVerzonden(v);if(window.fbSaveEmailConfig&&data.email_instellingen?.url)await window.fbSaveEmailConfig(data.email_instellingen);alert('&#10003;&#65039; Backup geladen en naar de cloud gestuurd. De pagina wordt nu vernieuwd.');location.reload();}catch(err){alert('&#10060; Ongeldig backup-bestand: '+err);}};reader.readAsText(file);}
+let bewerkKlantNaam=null;
+function opslaanKlant(){const naam=document.getElementById('k-naam').value.trim();if(!naam){document.getElementById('k-status').textContent='&#10060; Naam verplicht.';return;}const data={naam,adres:document.getElementById('k-adres').value.trim(),woonplaats:document.getElementById('k-woonplaats').value.trim(),telefoon:document.getElementById('k-telefoon').value.trim(),email:document.getElementById('k-email').value.trim(),transporteur:document.getElementById('k-transporteur').value.trim()};if(bewerkKlantNaam){const idx=klanten.findIndex(k=>k.naam===bewerkKlantNaam);if(idx>-1)klanten[idx]=data;if(bewerkKlantNaam!==naam){invoer.forEach(r=>{if(r.klant===bewerkKlantNaam){r.klant=naam;if(window.fbSaveInvoer)window.fbSaveInvoer(r);}});bewaarEnSync('cc_invoer',invoer);if(window.fbDeleteKlant)window.fbDeleteKlant(bewerkKlantNaam);}document.getElementById('k-status').textContent='&#10003;&#65039; Gewijzigd.';bewerkKlantNaam=null;document.querySelector('#tab-klanten button').textContent='&#10133; Klant toevoegen';}else{klanten.push(data);document.getElementById('k-status').textContent='&#10003;&#65039; Toegevoegd.';}bewaarEnSync('cc_klanten',klanten);if(window.fbSaveKlant)window.fbSaveKlant(data);['k-naam','k-adres','k-woonplaats','k-telefoon','k-email','k-transporteur'].forEach(id=>document.getElementById(id).value='');vulKlantSelects();toonKlanten();}
+function bewerkKlant(naam){const k=klanten.find(x=>x.naam===naam);if(!k)return;bewerkKlantNaam=naam;document.getElementById('k-naam').value=k.naam;document.getElementById('k-adres').value=k.adres||'';document.getElementById('k-woonplaats').value=k.woonplaats||'';document.getElementById('k-telefoon').value=k.telefoon||'';document.getElementById('k-email').value=k.email||'';document.getElementById('k-transporteur').value=k.transporteur||'';document.querySelector('#tab-klanten button').textContent='&#128190; Wijziging opslaan';document.getElementById('k-naam').scrollIntoView({behavior:'smooth'});}
+function verwijderKlant(naam){if(!confirm('Klant "'+naam+'" verwijderen?'))return;klanten=klanten.filter(k=>k.naam!==naam);bewaarEnSync('cc_klanten',klanten);if(window.fbDeleteKlant)window.fbDeleteKlant(naam);vulKlantSelects();toonKlanten();}
+function toonKlanten(){const gesorteerd=[...klanten].sort((a,b)=>a.naam.localeCompare(b.naam,'nl'));document.getElementById('k-lijst').innerHTML=gesorteerd.map(k=>`<div class="card" style="padding:8px 10px;display:flex;align-items:center;gap:8px;flex-wrap:nowrap;"><div style="flex:1;min-width:0;overflow:hidden;"><b>${k.naam}</b> <span class="badge">${k.woonplaats||''}</span><div class="small" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${k.email||''} ${k.telefoon||''}</div></div><div class="item-actions" style="margin:0;flex-shrink:0;"><button class="secondary" style="padding:6px 8px;" title="Bewerken" onclick="bewerkKlant('${k.naam}')">&#9999;&#65039;</button><button class="danger" style="padding:6px 8px;" title="Verwijderen" onclick="verwijderKlant('${k.naam}')">&#128465;&#65039;</button></div></div>`).join('')||'<div class="small">Nog geen klanten toegevoegd.</div>';}
 vulKlantSelects();
 toonLaatsteInvoer();
 </script>
-
-<!-- ===== FIREBASE LIVE-SYNC ===== -->
 <script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import {
-  getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot, getDocs
-} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-
-const firebaseConfig = {
-  apiKey: "AIzaSyDcIlmELWAClhg-6aOHCs-QsgxBJTkP8UQ",
-  authDomain: "cc-beheer.firebaseapp.com",
-  projectId: "cc-beheer",
-  storageBucket: "cc-beheer.firebasestorage.app",
-  messagingSenderId: "835121705327",
-  appId: "1:835121705327:web:f4f7fabf36d868809b389a"
-};
-
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
-
-// Maakt van een willekeurige tekst een veilige document-ID
-function veiligId(s){
-  return String(s).toLowerCase()
-    .replace(/[^a-z0-9]+/g,'_')
-    .replace(/^_+|_+$/g,'') || 'item';
-}
-
-// ---------- EENMALIGE MIGRATIE VAN LOKALE DATA ----------
-// Belangrijk: lees de lokale data NU uit, vóórdat de live-listeners
-// (hieronder) localStorage kunnen overschrijven met cloud-data.
-const origLocal = {
-  klanten:   JSON.parse(localStorage.getItem('cc_klanten')   || '[]'),
-  invoer:    JSON.parse(localStorage.getItem('cc_invoer')    || '[]'),
-  verzonden: JSON.parse(localStorage.getItem('cc_verzonden') || '[]'),
-  cfg:       JSON.parse(localStorage.getItem('cc_email_cfg') || '{}')
-};
-
-async function migreerIndienLeeg(){
-  try{
-    if(origLocal.klanten.length && (await getDocs(collection(db,'klanten'))).empty){
-      for(const k of origLocal.klanten) await setDoc(doc(db,'klanten', veiligId(k.naam)), k);
-    }
-    if(origLocal.invoer.length && (await getDocs(collection(db,'invoer'))).empty){
-      for(const r of origLocal.invoer) await setDoc(doc(db,'invoer', String(r.id)), r);
-    }
-    if(origLocal.verzonden.length && (await getDocs(collection(db,'verzonden'))).empty){
-      for(const v of origLocal.verzonden) await setDoc(doc(db,'verzonden', String(v.id)), v);
-    }
-    if(origLocal.cfg.url && (await getDocs(collection(db,'config'))).empty){
-      await setDoc(doc(db,'config','main'), origLocal.cfg);
-    }
-  }catch(err){ console.error('Migratie mislukt:', err); }
-  // Pas NU de live-listeners starten, zodat lokale data niet voortijdig
-  // overschreven wordt voordat de migratie heeft kunnen lopen.
-  starteLiveListeners();
-}
-
-function starteLiveListeners(){
-// ---------- LIVE LISTENERS ----------
-onSnapshot(collection(db,'klanten'), snap=>{
-  window.klanten = snap.docs.map(d=>d.data());
-  localStorage.setItem('cc_klanten', JSON.stringify(window.klanten));
-  window.vulKlantSelects?.();
-  window.toonKlanten?.();
-  window.toonOverzicht?.();
-  window.toonSyncIndicator?.('☁️');
-});
-
-onSnapshot(collection(db,'invoer'), snap=>{
-  window.invoer = snap.docs.map(d=>d.data());
-  localStorage.setItem('cc_invoer', JSON.stringify(window.invoer));
-  window.toonLaatsteInvoer?.();
-  window.toonOverzicht?.();
-});
-
-onSnapshot(collection(db,'verzonden'), snap=>{
-  const lijst = snap.docs.map(d=>d.data());
-  localStorage.setItem('cc_verzonden', JSON.stringify(lijst));
-  window.toonVerzendlijst?.();
-});
-
-onSnapshot(collection(db,'config'), snap=>{
-  const main = snap.docs.find(d=>d.id==='main');
-  if(main){
-    localStorage.setItem('cc_email_cfg', JSON.stringify(main.data()));
-    window.vulEmailConfigVelden?.();
-  }
-});
-}
-
+import{initializeApp}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import{getFirestore,collection,doc,setDoc,deleteDoc,onSnapshot,getDocs}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+const firebaseConfig={apiKey:"AIzaSyDcIlmELWAClhg-6aOHCs-QsgxBJTkP8UQ",authDomain:"cc-beheer.firebaseapp.com",projectId:"cc-beheer",storageBucket:"cc-beheer.firebasestorage.app",messagingSenderId:"835121705327",appId:"1:835121705327:web:f4f7fabf36d868809b389a"};
+const app=initializeApp(firebaseConfig);
+const db=getFirestore(app);
+function veiligId(s){return String(s).toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/g,'')||'item';}
+const origLocal={klanten:JSON.parse(localStorage.getItem('cc_klanten')||'[]'),invoer:JSON.parse(localStorage.getItem('cc_invoer')||'[]'),verzonden:JSON.parse(localStorage.getItem('cc_verzonden')||'[]'),cfg:JSON.parse(localStorage.getItem('cc_email_cfg')||'{}')};
+async function migreerIndienLeeg(){try{if(origLocal.klanten.length&&(await getDocs(collection(db,'klanten'))).empty)for(const k of origLocal.klanten)await setDoc(doc(db,'klanten',veiligId(k.naam)),k);if(origLocal.invoer.length&&(await getDocs(collection(db,'invoer'))).empty)for(const r of origLocal.invoer)await setDoc(doc(db,'invoer',String(r.id)),r);if(origLocal.verzonden.length&&(await getDocs(collection(db,'verzonden'))).empty)for(const v of origLocal.verzonden)await setDoc(doc(db,'verzonden',String(v.id)),v);if(origLocal.cfg.url&&(await getDocs(collection(db,'config'))).empty)await setDoc(doc(db,'config','main'),origLocal.cfg);}catch(err){console.error('Migratie mislukt:',err);}starteLiveListeners();}
+function starteLiveListeners(){onSnapshot(collection(db,'klanten'),snap=>{window.klanten=snap.docs.map(d=>d.data());localStorage.setItem('cc_klanten',JSON.stringify(window.klanten));window.vulKlantSelects?.();window.toonKlanten?.();window.toonOverzicht?.();window.toonSyncIndicator?.('&#9729;');});onSnapshot(collection(db,'invoer'),snap=>{window.invoer=snap.docs.map(d=>d.data());localStorage.setItem('cc_invoer',JSON.stringify(window.invoer));window.toonLaatsteInvoer?.();window.toonOverzicht?.();});onSnapshot(collection(db,'verzonden'),snap=>{const lijst=snap.docs.map(d=>d.data());localStorage.setItem('cc_verzonden',JSON.stringify(lijst));window.toonVerzendlijst?.();});onSnapshot(collection(db,'config'),snap=>{const main=snap.docs.find(d=>d.id==='main');if(main){localStorage.setItem('cc_email_cfg',JSON.stringify(main.data()));window.vulEmailConfigVelden?.();}});}
 migreerIndienLeeg();
-
-// ---------- SCHRIJF-FUNCTIES (aangeroepen vanuit de hoofd-app) ----------
-window.fbSaveKlant      = (k)    => setDoc(doc(db,'klanten', veiligId(k.naam)), k);
-window.fbDeleteKlant    = (naam) => deleteDoc(doc(db,'klanten', veiligId(naam)));
-window.fbSaveInvoer     = (r)    => setDoc(doc(db,'invoer', String(r.id)), r);
-window.fbDeleteInvoer   = (id)   => deleteDoc(doc(db,'invoer', String(id)));
-window.fbSaveVerzonden  = (v)    => setDoc(doc(db,'verzonden', String(v.id)), v);
-window.fbDeleteVerzonden= (id)   => deleteDoc(doc(db,'verzonden', String(id)));
-window.fbSaveEmailConfig= (cfg)  => setDoc(doc(db,'config','main'), cfg);
+window.fbSaveKlant=(k)=>setDoc(doc(db,'klanten',veiligId(k.naam)),k);
+window.fbDeleteKlant=(naam)=>deleteDoc(doc(db,'klanten',veiligId(naam)));
+window.fbSaveInvoer=(r)=>setDoc(doc(db,'invoer',String(r.id)),r);
+window.fbDeleteInvoer=(id)=>deleteDoc(doc(db,'invoer',String(id)));
+window.fbSaveVerzonden=(v)=>setDoc(doc(db,'verzonden',String(v.id)),v);
+window.fbDeleteVerzonden=(id)=>deleteDoc(doc(db,'verzonden',String(id)));
+window.fbSaveEmailConfig=(cfg)=>setDoc(doc(db,'config','main'),cfg);
 </script>
 </body>
 </html>
