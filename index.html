@@ -95,6 +95,10 @@
     <div style="max-height:300px;overflow-y:auto;">
       <table id="i-laatste"><tbody></tbody></table>
     </div>
+    <div style="margin-top:12px; padding:10px 12px; background:#fff3cd; border:1px solid #ffc107; border-radius:8px; display:flex; align-items:center; justify-content:space-between; gap:8px;">
+      <span style="font-size:12px; color:#856404;">💾 Maak dagelijks een backup om dataverlies te voorkomen</span>
+      <button onclick="exportBackup()" style="margin:0; padding:7px 12px; font-size:13px; background:#ffc107; color:#000; white-space:nowrap;">⬇️ Backup</button>
+    </div>
   </div>
   <!-- OVERZICHT -->
   <div id="tab-overzicht" class="card hidden">
@@ -203,6 +207,21 @@ function verwijderKlant(naam){if(!confirm('Klant "'+naam+'" verwijderen?'))retur
 function toonKlanten(){const gesorteerd=[...klanten].sort((a,b)=>a.naam.localeCompare(b.naam,'nl'));document.getElementById('k-lijst').innerHTML=gesorteerd.map(k=>`<div class="card" style="padding:8px 10px;display:flex;align-items:center;gap:8px;flex-wrap:nowrap;"><div style="flex:1;min-width:0;overflow:hidden;"><b>${k.naam}</b> <span class="badge">${k.woonplaats||''}</span><div class="small" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${k.email||''} ${k.telefoon||''}</div></div><div class="item-actions" style="margin:0;flex-shrink:0;"><button class="secondary" style="padding:6px 8px;" title="Bewerken" onclick="bewerkKlant('${k.naam}')">✏️</button><button class="danger" style="padding:6px 8px;" title="Verwijderen" onclick="verwijderKlant('${k.naam}')">🗑️</button></div></div>`).join('')||'<div class="small">Nog geen klanten toegevoegd.</div>';}
 vulKlantSelects();
 toonLaatsteInvoer();
+
+// ---------- AUTOMATISCHE DAGELIJKSE BACKUP ----------
+function autoBackup(){
+  const vandaag = new Date().toISOString().slice(0,10);
+  const laatste = localStorage.getItem('cc_laatste_backup');
+  if(laatste === vandaag) return; // al vandaag gedaan
+  // Wacht 3 seconden zodat Firebase eerst data kan laden
+  setTimeout(()=>{
+    const inv = laad('cc_invoer');
+    if(!inv.length) return; // geen data, geen backup
+    exportBackup();
+    localStorage.setItem('cc_laatste_backup', vandaag);
+  }, 3000);
+}
+autoBackup();
 </script>
 <script type="module">
 import{initializeApp}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
