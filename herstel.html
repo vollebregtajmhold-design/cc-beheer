@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<title>CC Herstel</title>
+<style>
+  body{font-family:Arial,sans-serif;padding:20px;max-width:600px;margin:0 auto;}
+  button{padding:12px 20px;font-size:16px;background:#4f8cff;color:#fff;border:none;border-radius:8px;cursor:pointer;margin:10px 0;}
+  .status{padding:10px;background:#f0f4ff;border-radius:8px;margin:10px 0;font-size:14px;}
+  .success{background:#c8e6c9;}
+  .error{background:#ffcdd2;}
+</style>
+</head>
+<body>
+<h2>🔧 CC Beheer Data Herstel</h2>
+<p>Dit hulpprogramma haalt alle data op uit Firebase en slaat het op als backup-bestand.</p>
+<div class="status" id="status">Klik op de knop om te starten...</div>
+<button onclick="herstelData()">📥 Data ophalen uit Firebase en opslaan</button>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getFirestore, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDcIlmELWAClhg-6aOHCs-QsgxBJTkP8UQ",
+  authDomain: "cc-beheer.firebaseapp.com",
+  projectId: "cc-beheer",
+  storageBucket: "cc-beheer.firebasestorage.app",
+  messagingSenderId: "835121705327",
+  appId: "1:835121705327:web:f4f7fabf36d868809b389a"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+window.herstelData = async function() {
+  const status = document.getElementById('status');
+  status.textContent = '⏳ Bezig met ophalen uit Firebase...';
+  status.className = 'status';
+
+  try {
+    status.textContent = '⏳ Klanten ophalen...';
+    const klSnap = await getDocs(collection(db, 'klanten'));
+    const klanten = klSnap.docs.map(d => d.data());
+
+    status.textContent = '⏳ Invoer ophalen...';
+    const invSnap = await getDocs(collection(db, 'invoer'));
+    const invoer = invSnap.docs.map(d => d.data());
+
+    status.textContent = '⏳ Verzonden ophalen...';
+    const verzSnap = await getDocs(collection(db, 'verzonden'));
+    const verzonden = verzSnap.docs.map(d => d.data());
+
+    const data = { klanten, invoer, verzonden };
+
+    status.textContent = `✅ Opgehaald: ${klanten.length} klanten, ${invoer.length} invoer-regels, ${verzonden.length} verzonden. Bestand wordt gedownload...`;
+    status.className = 'status success';
+
+    // Download als backup
+    const blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'CC_Beheer_VOLLEDIG_' + new Date().toISOString().slice(0,10) + '.json';
+    a.click();
+
+  } catch(err) {
+    status.textContent = '❌ Fout: ' + err.message;
+    status.className = 'status error';
+  }
+};
+</script>
+</body>
+</html>
