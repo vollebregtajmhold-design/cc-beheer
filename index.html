@@ -158,6 +158,8 @@
       <button class="secondary" onclick="document.getElementById('k-import').click()">&#11014;&#65039; Backup laden</button>
     </div>
     <input type="file" id="k-import" accept=".json" style="display:none;" onchange="importBackup(event)">
+
+    
   </div>
 </div>
 <script>
@@ -215,11 +217,14 @@ function gasSync(){
   if(!cfg.url) return;
   if(_syncTimer) clearTimeout(_syncTimer);
   _syncTimer = setTimeout(()=>{
+    const tijdstempel = new Date().toISOString();
     const payload = {
       klanten: laad('cc_klanten'),
       invoer: laad('cc_invoer'),
-      verzonden: laad('cc_verzonden')
+      verzonden: laad('cc_verzonden'),
+      tijdstempel: tijdstempel
     };
+    bewaar('cc_laatste_sync', tijdstempel);
     toonSyncIndicator('⏳');
     fetch(cfg.url, {
       method: 'POST',
@@ -240,26 +245,28 @@ function laadVanCloud(){
     .then(j=>{
       if(j.ok && j.payload){
         const p = j.payload;
-        const cloudInvoer = p.invoer || [];
-        const lokaalInvoer = laad('cc_invoer');
-        // Alleen overschrijven als cloud MEER data heeft dan lokaal
-        if(cloudInvoer.length > lokaalInvoer.length){
+        const cloudTijd = p.tijdstempel ? new Date(p.tijdstempel) : new Date(0);
+        const lokaalTijd = new Date(localStorage.getItem('cc_laatste_sync') || 0);
+
+        if(cloudTijd > lokaalTijd){
+          // Cloud is nieuwer → lokaal overschrijven
           if(p.klanten){ bewaar('cc_klanten', p.klanten); klanten = p.klanten; }
           if(p.invoer){ bewaar('cc_invoer', p.invoer); invoer = p.invoer; }
           if(p.verzonden) bewaar('cc_verzonden', p.verzonden);
+          bewaar('cc_laatste_sync', p.tijdstempel);
           vulKlantSelects();
           toonLaatsteInvoer();
           toonOverzicht();
           toonVerzendlijst();
           toonSyncIndicator('☁️ ✅');
         } else {
-          // Lokaal heeft meer of evenveel data - stuur lokale data naar cloud
+          // Lokaal is nieuwer of gelijk → naar cloud sturen
           toonSyncIndicator('⬆️ opslaan...');
           gasSync();
         }
         setTimeout(()=>toonSyncIndicator(''), 3000);
       } else {
-        // Cloud is leeg - stuur lokale data naar cloud
+        // Cloud is leeg → lokale data naar cloud sturen
         toonSyncIndicator('⬆️ eerste sync...');
         gasSync();
         setTimeout(()=>toonSyncIndicator(''), 3000);
@@ -275,14 +282,13 @@ laadVanCloud();
 function autoBackup(){
   const vandaag = new Date().toISOString().slice(0,10);
   const laatste = localStorage.getItem('cc_laatste_backup');
-  if(laatste === vandaag) return; // al vandaag gedaan
-  // Wacht 5 seconden zodat Apps Script eerst data kan laden
+  if(laatste === vandaag) return;
   setTimeout(()=>{
     const inv = laad('cc_invoer');
-    if(!inv.length) return; // geen data, geen backup
+    if(!inv.length) return;
     exportBackup();
     localStorage.setItem('cc_laatste_backup', vandaag);
-  }, 5000);
+  }, 8000); // wacht 8 sec zodat sync eerst klaar is
 }
 autoBackup();
 </script>
