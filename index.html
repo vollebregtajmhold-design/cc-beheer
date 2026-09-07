@@ -55,7 +55,7 @@
 <body>
 <header>
   <div style="display:flex;justify-content:space-between;align-items:center;">
-    <h1>&#128230; CC Beheer 2026 <span style="font-size:11px;color:var(--muted);font-weight:400;">v1.0</span></h1>
+    <h1>&#128230; CC Beheer 2026 <span style="font-size:11px;color:var(--muted);font-weight:400;">v1.1</span></h1>
     <div style="display:flex;align-items:center;gap:8px;">
       <span id="sync-indicator" class="small"></span>
       <button class="secondary" style="margin:0;padding:6px 10px;" onclick="toggleThema()">&#127769;/&#9728;&#65039;</button>
@@ -243,34 +243,24 @@ function laadVanCloud(){
   fetch(cfg.url + '?action=load')
     .then(r=>r.json())
     .then(j=>{
-      if(j.ok && j.payload){
+      if(j.ok && j.payload && j.payload.invoer && j.payload.invoer.length > 0){
+        // Cloud heeft data → altijd laden
         const p = j.payload;
-        const cloudTijd = p.tijdstempel ? new Date(p.tijdstempel) : new Date(0);
-        const lokaalTijd = new Date(localStorage.getItem('cc_laatste_sync') || 0);
-
-        if(cloudTijd > lokaalTijd){
-          // Cloud is nieuwer → lokaal overschrijven
-          if(p.klanten){ bewaar('cc_klanten', p.klanten); klanten = p.klanten; }
-          if(p.invoer){ bewaar('cc_invoer', p.invoer); invoer = p.invoer; }
-          if(p.verzonden) bewaar('cc_verzonden', p.verzonden);
-          bewaar('cc_laatste_sync', p.tijdstempel);
-          vulKlantSelects();
-          toonLaatsteInvoer();
-          toonOverzicht();
-          toonVerzendlijst();
-          toonSyncIndicator('☁️ ✅');
-        } else {
-          // Lokaal is nieuwer of gelijk → naar cloud sturen
-          toonSyncIndicator('⬆️ opslaan...');
-          gasSync();
-        }
-        setTimeout(()=>toonSyncIndicator(''), 3000);
+        if(p.klanten){ bewaar('cc_klanten', p.klanten); klanten = p.klanten; }
+        if(p.invoer){ bewaar('cc_invoer', p.invoer); invoer = p.invoer; }
+        if(p.verzonden) bewaar('cc_verzonden', p.verzonden);
+        if(p.tijdstempel) bewaar('cc_laatste_sync', p.tijdstempel);
+        vulKlantSelects();
+        toonLaatsteInvoer();
+        toonOverzicht();
+        toonVerzendlijst();
+        toonSyncIndicator('☁️ ✅');
       } else {
         // Cloud is leeg → lokale data naar cloud sturen
         toonSyncIndicator('⬆️ eerste sync...');
         gasSync();
-        setTimeout(()=>toonSyncIndicator(''), 3000);
       }
+      setTimeout(()=>toonSyncIndicator(''), 3000);
     })
     .catch(()=>{ toonSyncIndicator(''); });
 }
