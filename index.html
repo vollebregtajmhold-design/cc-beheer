@@ -55,7 +55,7 @@
 <body>
 <header>
   <div style="display:flex;justify-content:space-between;align-items:center;">
-    <h1>&#128230; CC Beheer 2026 <span style="font-size:11px;color:var(--muted);font-weight:400;">v1.1</span></h1>
+    <h1>&#128230; CC Beheer 2026 <span style="font-size:11px;color:var(--muted);font-weight:400;">v1.2</span></h1>
     <div style="display:flex;align-items:center;gap:8px;">
       <span id="sync-indicator" class="small"></span>
       <button class="secondary" style="margin:0;padding:6px 10px;" onclick="toggleThema()">&#127769;/&#9728;&#65039;</button>
@@ -197,7 +197,12 @@ function mailOverzicht(){const klant=document.getElementById('o-klant').value;if
 function logVerzending(klant,email){let lijst=laad('cc_verzonden');const nu=new Date();const item={id:Date.now(),klant,email,datum:nu.toISOString().slice(0,10),tijd:nu.toLocaleTimeString('nl-NL',{hour:'2-digit',minute:'2-digit'})};lijst.push(item);bewaarEnSync('cc_verzonden',lijst);gasSync();toonVerzendlijst();}
 function verwijderVerzending(id){let lijst=laad('cc_verzonden');lijst=lijst.filter(v=>v.id!==id);bewaarEnSync('cc_verzonden',lijst);gasSync();toonVerzendlijst();}
 function toonVerzendlijst(){const lijst=laad('cc_verzonden').slice(-20).reverse();const el=document.getElementById('o-verzendlijst');if(!el)return;if(!lijst.length){el.innerHTML='<div class="small">Nog niets gemaild.</div>';return;}el.innerHTML='<table><thead><tr><th>Datum</th><th>Tijd</th><th>Klant</th><th>E-mail</th><th></th></tr></thead><tbody>'+lijst.map(v=>`<tr><td>${fmtDatum(v.datum)}</td><td>${v.tijd}</td><td>${v.klant}</td><td>${v.email}</td><td><button class="danger" style="padding:2px 6px;font-size:11px;" onclick="verwijderVerzending(${v.id})">x</button></td></tr>`).join('')+'</tbody></table>';}
-function laadEmailConfig(){return laad('cc_email_cfg')||{};}
+function laadEmailConfig(){
+  const opgeslagen = laad('cc_email_cfg') || {};
+  // Vaste URL altijd als fallback
+  const vasteUrl = 'https://script.google.com/macros/s/AKfycbwmK92CqAVZct-OlJ_yIxE7wXYzNLa460cMPvaQhwGcX9fc658c9Wdaa0BZCUNKT6l6OQ/exec';
+  return { url: opgeslagen.url || vasteUrl };
+}
 function opslaanEmailConfig(){const cfg={url:document.getElementById('cfg-url').value.trim()};bewaar('cc_email_cfg',cfg);gasSync();document.getElementById('cfg-status').textContent='✓️ Opgeslagen.';}
 function vulEmailConfigVelden(){const cfg=laadEmailConfig();if(cfg.url)document.getElementById('cfg-url').value=cfg.url;}
 function exportBackup(){const data={klanten:laad('cc_klanten'),invoer:laad('cc_invoer'),verzonden:laad('cc_verzonden'),email_instellingen:laad('cc_email_cfg')};const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='CC_Beheer_backup_'+new Date().toISOString().slice(0,10)+'.json';a.click();}
