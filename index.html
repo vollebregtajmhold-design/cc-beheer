@@ -55,7 +55,7 @@
 <body>
 <header>
   <div style="display:flex;justify-content:space-between;align-items:center;">
-    <h1>&#128230; CC Beheer 2026 <span style="font-size:11px;color:var(--muted);font-weight:400;">v1.2</span></h1>
+    <h1>&#128230; CC Beheer 2026 <span style="font-size:11px;color:var(--muted);font-weight:400;">v1.3</span></h1>
     <div style="display:flex;align-items:center;gap:8px;">
       <span id="sync-indicator" class="small"></span>
       <button class="secondary" style="margin:0;padding:6px 10px;" onclick="toggleThema()">&#127769;/&#9728;&#65039;</button>
@@ -176,6 +176,68 @@ function toonSyncIndicator(tekst){const el=document.getElementById('sync-indicat
 var klanten=laad('cc_klanten');
 var invoer=laad('cc_invoer');
 document.querySelectorAll('.tab').forEach(t=>{t.onclick=()=>{document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));document.querySelectorAll('.content>.card').forEach(x=>x.classList.add('hidden'));t.classList.add('active');document.getElementById('tab-'+t.dataset.tab).classList.remove('hidden');if(t.dataset.tab==='overzicht'){toonOverzicht();toonVerzendlijst();}if(t.dataset.tab==='klanten'){toonKlanten();vulEmailConfigVelden();}if(t.dataset.tab==='invoer')toonLaatsteInvoer();};});
+// ---------- CLOUD SYNC ----------
+var _syncTimer = null;
+var _syncBezig = false;
+
+function gasSync(){
+  if(_syncTimer) clearTimeout(_syncTimer);
+  _syncTimer = setTimeout(_doSync, 1500);
+}
+
+function _doSync(){
+  if(_syncBezig) return;
+  _syncBezig = true;
+  const payload = {
+    klanten: klanten,
+    invoer: invoer,
+    verzonden: laad('cc_verzonden'),
+    tijdstempel: new Date().toISOString()
+  };
+  toonSyncIndicator('⏳');
+  fetch(GAS_URL, {
+    method: 'POST',
+    headers: {'Content-Type': 'text/plain;charset=utf-8'},
+    body: JSON.stringify({action: 'save', payload})
+  }).then(r=>r.json())
+    .then(j=>{
+      _syncBezig = false;
+      toonSyncIndicator(j.ok ? '☁️' : '❌');
+      setTimeout(()=>toonSyncIndicator(''), 2000);
+    })
+    .catch(()=>{
+      _syncBezig = false;
+      toonSyncIndicator('❌');
+      setTimeout(()=>toonSyncIndicator(''), 3000);
+    });
+}
+
+function laadVanCloud(){
+  toonSyncIndicator('⏳');
+  fetch(GAS_URL + '?action=load')
+    .then(r=>r.json())
+    .then(j=>{
+      if(j.ok && j.payload && j.payload.invoer && j.payload.invoer.length > 0){
+        const p = j.payload;
+        klanten = p.klanten || [];
+        invoer = p.invoer || [];
+        bewaar('cc_klanten', klanten);
+        bewaar('cc_invoer', invoer);
+        if(p.verzonden) bewaar('cc_verzonden', p.verzonden);
+        vulKlantSelects();
+        toonLaatsteInvoer();
+        toonOverzicht();
+        toonVerzendlijst();
+        toonSyncIndicator('☁️');
+      } else {
+        toonSyncIndicator('⬆️');
+        _doSync();
+      }
+      setTimeout(()=>toonSyncIndicator(''), 2000);
+    })
+    .catch(()=>{ toonSyncIndicator('❌'); setTimeout(()=>toonSyncIndicator(''),3000); });
+}
+
 function getISOWeek(date){const d=new Date(date.getTime());d.setHours(0,0,0,0);d.setDate(d.getDate()+4-(d.getDay()||7));const yearStart=new Date(d.getFullYear(),0,1);return Math.ceil((((d-yearStart)/86400000)+1)/7);}
 function vulKlantSelects(){const gesorteerd=[...klanten].sort((a,b)=>a.naam.localeCompare(b.naam,'nl'));const opts=gesorteerd.map(k=>`<option value="${k.naam}">${k.naam}</option>`).join('');document.getElementById('i-klant').innerHTML='<option value="">-- kies klant --</option>'+opts;document.getElementById('o-klant').innerHTML='<option value="">-- kies klant --</option><option value="__totaal__">📊 Totaaloverzicht alle klanten</option>'+opts;}
 function fmtDatum(iso){const d=new Date(iso);return d.toLocaleDateString('nl-NL',{day:'2-digit',month:'2-digit',year:'numeric'});}
@@ -199,9 +261,7 @@ function verwijderVerzending(id){let lijst=laad('cc_verzonden');lijst=lijst.filt
 function toonVerzendlijst(){const lijst=laad('cc_verzonden').slice(-20).reverse();const el=document.getElementById('o-verzendlijst');if(!el)return;if(!lijst.length){el.innerHTML='<div class="small">Nog niets gemaild.</div>';return;}el.innerHTML='<table><thead><tr><th>Datum</th><th>Tijd</th><th>Klant</th><th>E-mail</th><th></th></tr></thead><tbody>'+lijst.map(v=>`<tr><td>${fmtDatum(v.datum)}</td><td>${v.tijd}</td><td>${v.klant}</td><td>${v.email}</td><td><button class="danger" style="padding:2px 6px;font-size:11px;" onclick="verwijderVerzending(${v.id})">x</button></td></tr>`).join('')+'</tbody></table>';}
 function laadEmailConfig(){
   const opgeslagen = laad('cc_email_cfg') || {};
-  // Vaste URL altijd als fallback
-  const vasteUrl = 'https://script.google.com/macros/s/AKfycbwmK92CqAVZct-OlJ_yIxE7wXYzNLa460cMPvaQhwGcX9fc658c9Wdaa0BZCUNKT6l6OQ/exec';
-  return { url: opgeslagen.url || vasteUrl };
+  return { url: opgeslagen.url || GAS_URL };
 }
 function opslaanEmailConfig(){const cfg={url:document.getElementById('cfg-url').value.trim()};bewaar('cc_email_cfg',cfg);gasSync();document.getElementById('cfg-status').textContent='✓️ Opgeslagen.';}
 function vulEmailConfigVelden(){const cfg=laadEmailConfig();if(cfg.url)document.getElementById('cfg-url').value=cfg.url;}
@@ -214,78 +274,19 @@ function verwijderKlant(naam){if(!confirm('Klant "'+naam+'" verwijderen?'))retur
 function toonKlanten(){const gesorteerd=[...klanten].sort((a,b)=>a.naam.localeCompare(b.naam,'nl'));document.getElementById('k-lijst').innerHTML=gesorteerd.map(k=>`<div class="card" style="padding:8px 10px;display:flex;align-items:center;gap:8px;flex-wrap:nowrap;"><div style="flex:1;min-width:0;overflow:hidden;"><b>${k.naam}</b> <span class="badge">${k.woonplaats||''}</span><div class="small" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${k.email||''} ${k.telefoon||''}</div></div><div class="item-actions" style="margin:0;flex-shrink:0;"><button class="secondary" style="padding:6px 8px;" title="Bewerken" onclick="bewerkKlant('${k.naam}')">✏️</button><button class="danger" style="padding:6px 8px;" title="Verwijderen" onclick="verwijderKlant('${k.naam}')">🗑️</button></div></div>`).join('')||'<div class="small">Nog geen klanten toegevoegd.</div>';}
 vulKlantSelects();
 toonLaatsteInvoer();
-
-// ---------- APPS SCRIPT SYNC ----------
-let _syncTimer = null;
-function gasSync(){
-  const cfg = laadEmailConfig();
-  if(!cfg.url) return;
-  if(_syncTimer) clearTimeout(_syncTimer);
-  _syncTimer = setTimeout(()=>{
-    const tijdstempel = new Date().toISOString();
-    const payload = {
-      klanten: laad('cc_klanten'),
-      invoer: laad('cc_invoer'),
-      verzonden: laad('cc_verzonden'),
-      tijdstempel: tijdstempel
-    };
-    bewaar('cc_laatste_sync', tijdstempel);
-    toonSyncIndicator('⏳');
-    fetch(cfg.url, {
-      method: 'POST',
-      headers: {'Content-Type': 'text/plain;charset=utf-8'},
-      body: JSON.stringify({action: 'save', payload})
-    }).then(r=>r.json())
-      .then(j=>{ toonSyncIndicator(j.ok ? '☁️ ✅' : '❌'); setTimeout(()=>toonSyncIndicator(''),3000); })
-      .catch(()=>{ toonSyncIndicator('❌'); setTimeout(()=>toonSyncIndicator(''),3000); });
-  }, 1500);
-}
-
-function laadVanCloud(){
-  const cfg = laadEmailConfig();
-  if(!cfg.url) return;
-  toonSyncIndicator('⏳ laden...');
-  fetch(cfg.url + '?action=load')
-    .then(r=>r.json())
-    .then(j=>{
-      if(j.ok && j.payload && j.payload.invoer && j.payload.invoer.length > 0){
-        // Cloud heeft data → altijd laden
-        const p = j.payload;
-        if(p.klanten){ bewaar('cc_klanten', p.klanten); klanten = p.klanten; }
-        if(p.invoer){ bewaar('cc_invoer', p.invoer); invoer = p.invoer; }
-        if(p.verzonden) bewaar('cc_verzonden', p.verzonden);
-        if(p.tijdstempel) bewaar('cc_laatste_sync', p.tijdstempel);
-        vulKlantSelects();
-        toonLaatsteInvoer();
-        toonOverzicht();
-        toonVerzendlijst();
-        toonSyncIndicator('☁️ ✅');
-      } else {
-        // Cloud is leeg → lokale data naar cloud sturen
-        toonSyncIndicator('⬆️ eerste sync...');
-        gasSync();
-      }
-      setTimeout(()=>toonSyncIndicator(''), 3000);
-    })
-    .catch(()=>{ toonSyncIndicator(''); });
-}
-
-// Bij opstart data ophalen uit cloud
 laadVanCloud();
 
-// ---------- AUTOMATISCHE DAGELIJKSE BACKUP ----------
-function autoBackup(){
+// Automatische dagelijkse backup (na 10 sec zodat cloud eerst geladen is)
+setTimeout(()=>{
   const vandaag = new Date().toISOString().slice(0,10);
   const laatste = localStorage.getItem('cc_laatste_backup');
-  if(laatste === vandaag) return;
-  setTimeout(()=>{
-    const inv = laad('cc_invoer');
-    if(!inv.length) return;
+  if(laatste !== vandaag && invoer.length > 0){
     exportBackup();
     localStorage.setItem('cc_laatste_backup', vandaag);
-  }, 8000); // wacht 8 sec zodat sync eerst klaar is
-}
-autoBackup();
+  }
+}, 10000);
+
+
 </script>
 
 </body>
