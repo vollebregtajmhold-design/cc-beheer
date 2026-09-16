@@ -55,7 +55,7 @@
 <body>
 <header>
   <div style="display:flex;justify-content:space-between;align-items:center;">
-    <h1>&#128230; CC Beheer 2026 <span style="font-size:11px;color:var(--muted);font-weight:400;">v1.3</span></h1>
+    <h1>&#128230; CC Beheer 2026 <span style="font-size:11px;color:var(--muted);font-weight:400;">v1.4</span></h1>
     <div style="display:flex;align-items:center;gap:8px;">
       <span id="sync-indicator" class="small"></span>
       <button class="secondary" style="margin:0;padding:6px 10px;" onclick="toggleThema()">&#127769;/&#9728;&#65039;</button>
@@ -172,10 +172,14 @@ function vulTransporteur(){const klant=document.getElementById('i-klant').value;
 function volgendInvoerId(){let max=0;invoer.forEach(r=>{if(r.id>max)max=r.id;});return max+1;}
 function laad(key){try{return JSON.parse(localStorage.getItem(key))||[];}catch(e){return[];}}
 function bewaar(key,data){localStorage.setItem(key,JSON.stringify(data));}
-function bewaarEnSync(key,data){bewaar(key,data);}
+function bewaarEnSync(key,data){
+  // Klanten en invoer ALLEEN via cloud, niet lokaal
+  if(key==='cc_klanten'||key==='cc_invoer') return;
+  bewaar(key,data);
+}
 function toonSyncIndicator(tekst){const el=document.getElementById('sync-indicator');if(el)el.textContent=tekst;if(tekst&&tekst.indexOf('☁️')===0){setTimeout(()=>{if(el&&el.textContent===tekst)el.textContent='';},2000);}}
-var klanten=laad('cc_klanten');
-var invoer=laad('cc_invoer');
+var klanten=[];
+var invoer=[];
 document.querySelectorAll('.tab').forEach(t=>{t.onclick=()=>{document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));document.querySelectorAll('.content>.card').forEach(x=>x.classList.add('hidden'));t.classList.add('active');document.getElementById('tab-'+t.dataset.tab).classList.remove('hidden');if(t.dataset.tab==='overzicht'){toonOverzicht();toonVerzendlijst();}if(t.dataset.tab==='klanten'){toonKlanten();vulEmailConfigVelden();}if(t.dataset.tab==='invoer')toonLaatsteInvoer();};});
 // ---------- CLOUD SYNC ----------
 var _syncTimer = null;
@@ -222,8 +226,6 @@ function laadVanCloud(){
         const p = j.payload;
         klanten = p.klanten || [];
         invoer = p.invoer || [];
-        bewaar('cc_klanten', klanten);
-        bewaar('cc_invoer', invoer);
         if(p.verzonden) bewaar('cc_verzonden', p.verzonden);
         vulKlantSelects();
         toonLaatsteInvoer();
