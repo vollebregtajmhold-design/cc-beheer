@@ -151,7 +151,7 @@ function fmtDatum(iso){return new Date(iso).toLocaleDateString('nl-NL',{day:'2-d
 function getISOWeek(date){const d=new Date(date);d.setHours(0,0,0,0);d.setDate(d.getDate()+4-(d.getDay()||7));const y=new Date(d.getFullYear(),0,1);return Math.ceil((((d-y)/86400000)+1)/7);}
 function kleurCel(v){if(v>0)return'background:#c8e6c9;';if(v<0)return'background:#ffcdd2;';return'';}
 function volgendInvoerId(){let m=0;invoer.forEach(r=>{if(r.id>m)m=r.id;});return m+1;}
-function toonSyncIndicator(t){const el=document.getElementById('sync-indicator');if(el)el.textContent=t;if(t==='&#9729;&#65039;'){setTimeout(()=>{if(el&&el.textContent===t)el.textContent='';},2000);}}
+function toonSyncIndicator(t){const el=document.getElementById('sync-indicator');if(el)el.textContent=t;if(t==='☁️'){setTimeout(()=>{if(el&&el.textContent===t)el.textContent='';},2000);}}
 // Tabs
 document.querySelectorAll('.tab').forEach(t=>{t.onclick=()=>{
   document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
@@ -169,7 +169,7 @@ function vulKlantSelects(){
   const s=[...klanten].sort((a,b)=>a.naam.localeCompare(b.naam,'nl'));
   const o=s.map(k=>'<option value="'+k.naam+'">'+k.naam+'</option>').join('');
   document.getElementById('i-klant').innerHTML='<option value="">-- kies klant --</option>'+o;
-  document.getElementById('o-klant').innerHTML='<option value="">-- kies klant --</option><option value="__totaal__">&#128202; Totaaloverzicht</option>'+o;
+  document.getElementById('o-klant').innerHTML='<option value="">-- kies klant --</option><option value="__totaal__">📊 Totaaloverzicht</option>'+o;
 }
 function vulTransporteur(){const k=klanten.find(x=>x.naam===document.getElementById('i-klant').value);document.getElementById('i-transporteur').value=k&&k.transporteur?k.transporteur:'';}
 // Invoer
@@ -181,7 +181,7 @@ function opslaanInvoer(){
   if(!datum){document.getElementById('i-status').textContent='Kies een datum.';return;}
   const v={klant,datum,week:'wk '+getISOWeek(new Date(datum)),bon:document.getElementById('i-bon').value.trim(),transporteur:document.getElementById('i-transporteur').value.trim(),cc:Number(document.getElementById('i-cc').value)||0,platen:Number(document.getElementById('i-platen').value)||0,opzet:Number(document.getElementById('i-opzet').value)||0,opmerking:document.getElementById('i-opmerking').value.trim()};
   let item;
-  if(bewerkInvoerId){const idx=invoer.findIndex(r=>r.id===bewerkInvoerId);if(idx>-1)invoer[idx]=Object.assign({id:bewerkInvoerId},v);item=invoer[idx];bewerkInvoerId=null;document.querySelector('#tab-invoer button').textContent='&#10003; Opslaan';document.getElementById('i-status').textContent='Wijziging opgeslagen voor '+klant;}
+  if(bewerkInvoerId){const idx=invoer.findIndex(r=>r.id===bewerkInvoerId);if(idx>-1)invoer[idx]=Object.assign({id:bewerkInvoerId},v);item=invoer[idx];bewerkInvoerId=null;document.querySelector('#tab-invoer button').textContent='✓ Opslaan';document.getElementById('i-status').textContent='Wijziging opgeslagen voor '+klant;}
   else{v.id=volgendInvoerId();invoer.push(v);item=v;document.getElementById('i-status').textContent='Opgeslagen voor '+klant;}
   if(window.fbSaveInvoer)window.fbSaveInvoer(item);
   ['i-cc','i-platen','i-opzet','i-opmerking','i-transporteur','i-bon'].forEach(id=>document.getElementById(id).value='');
@@ -191,7 +191,7 @@ function bewerkInvoer(id){
   const r=invoer.find(x=>x.id===id);if(!r)return;
   bewerkInvoerId=id;
   document.getElementById('i-klant').value=r.klant;document.getElementById('i-datum').value=r.datum;document.getElementById('i-bon').value=r.bon||'';document.getElementById('i-cc').value=r.cc;document.getElementById('i-platen').value=r.platen;document.getElementById('i-opzet').value=r.opzet;document.getElementById('i-opmerking').value=r.opmerking||'';document.getElementById('i-transporteur').value=r.transporteur||'';
-  document.querySelector('#tab-invoer button').textContent='&#128190; Wijziging opslaan';
+  document.querySelector('#tab-invoer button').textContent='💾 Wijziging opslaan';
   document.getElementById('i-klant').scrollIntoView({behavior:'smooth'});
 }
 function verwijderInvoer(id){
@@ -217,7 +217,7 @@ function toonLaatsteInvoer(){
   const tbody=document.querySelector('#i-laatste tbody');
   tbody.innerHTML=[...invoer].reverse().map(r=>{
     const neg=r.cc<0||r.platen<0||r.opzet<0;
-    return '<tr style="'+(neg?'background:#ffcdd2;':'')+'"><td>'+fmtDatum(r.datum)+'</td><td>'+r.klant+'</td><td>'+r.cc+'/'+r.platen+'/'+r.opzet+'</td><td style="white-space:nowrap;"><button class="secondary" style="padding:5px 9px;font-size:15px;margin-right:4px;" onclick="bewerkInvoer('+r.id+')">&#9999;&#65039;</button><button class="secondary" style="padding:5px 9px;font-size:15px;margin-right:4px;" onclick="printBon('+r.id+')">&#128424;&#65039;</button><button class="danger" style="padding:5px 10px;font-size:14px;" onclick="verwijderInvoer('+r.id+')">&#10005;</button></td></tr>';
+    return '<tr style="'+(neg?'background:#ffcdd2;':'')+'"><td>'+fmtDatum(r.datum)+'</td><td>'+r.klant+'</td><td>'+r.cc+'/'+r.platen+'/'+r.opzet+'</td><td style="white-space:nowrap;"><button class="secondary" style="padding:5px 9px;font-size:15px;margin-right:4px;" onclick="bewerkInvoer('+r.id+')">✏️</button><button class="secondary" style="padding:5px 9px;font-size:15px;margin-right:4px;" onclick="printBon('+r.id+')">🖨️</button><button class="danger" style="padding:5px 10px;font-size:14px;" onclick="verwijderInvoer('+r.id+')">✕</button></td></tr>';
   }).join('');
 }
 // Overzicht
@@ -267,8 +267,7 @@ function exportTotaalPdf(){
 function exportCsv(){
   const kop=['ID','Datum','Week','Klant','Bon','Transporteur','CC','Platen','Opzetstukken','Opmerking'];
   const r=[kop.join(';')];[...invoer].sort((a,b)=>a.id-b.id).forEach(x=>r.push([x.id,fmtDatum(x.datum),x.week,x.klant,x.bon||'',x.transporteur||'',x.cc,x.platen,x.opzet,(x.opmerking||'').replace(/;/g,',')].join(';')));
-  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['﻿'+r.join('
-')],{type:'text/csv;charset=utf-8;'}));a.download='CC_'+new Date().toISOString().slice(0,10)+'.csv';a.click();
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['﻿'+r.join('\r\n')],{type:'text/csv;charset=utf-8;'}));a.download='CC_'+new Date().toISOString().slice(0,10)+'.csv';a.click();
 }
 // Mail
 function laadEmailConfig(){const c=laad('cc_email_cfg');return c&&c.url?c:{url:'https://script.google.com/macros/s/AKfycbwmK92CqAVZct-OlJ_yIxE7wXYzNLa460cMPvaQhwGcX9fc658c9Wdaa0BZCUNKT6l6OQ/exec'};}
@@ -309,21 +308,23 @@ let bewerkKlantNaam=null;
 function opslaanKlant(){
   const naam=document.getElementById('k-naam').value.trim();if(!naam){document.getElementById('k-status').textContent='Naam verplicht.';return;}
   const data={naam,adres:document.getElementById('k-adres').value.trim(),woonplaats:document.getElementById('k-woonplaats').value.trim(),telefoon:document.getElementById('k-telefoon').value.trim(),email:document.getElementById('k-email').value.trim(),transporteur:document.getElementById('k-transporteur').value.trim()};
-  if(bewerkKlantNaam){const idx=klanten.findIndex(k=>k.naam===bewerkKlantNaam);if(idx>-1)klanten[idx]=data;if(bewerkKlantNaam!==naam){invoer.forEach(r=>{if(r.klant===bewerkKlantNaam){r.klant=naam;if(window.fbSaveInvoer)window.fbSaveInvoer(r);}});if(window.fbDeleteKlant)window.fbDeleteKlant(bewerkKlantNaam);}document.getElementById('k-status').textContent='Gewijzigd.';bewerkKlantNaam=null;document.querySelector('#tab-klanten button').textContent='&#10133; Klant toevoegen';}
+  if(bewerkKlantNaam){const idx=klanten.findIndex(k=>k.naam===bewerkKlantNaam);if(idx>-1)klanten[idx]=data;if(bewerkKlantNaam!==naam){invoer.forEach(r=>{if(r.klant===bewerkKlantNaam){r.klant=naam;if(window.fbSaveInvoer)window.fbSaveInvoer(r);}});if(window.fbDeleteKlant)window.fbDeleteKlant(bewerkKlantNaam);}document.getElementById('k-status').textContent='Gewijzigd.';bewerkKlantNaam=null;document.querySelector('#tab-klanten button').textContent='➕ Klant toevoegen';}
   else{klanten.push(data);document.getElementById('k-status').textContent='Toegevoegd.';}
   if(window.fbSaveKlant)window.fbSaveKlant(data);
   ['k-naam','k-adres','k-woonplaats','k-telefoon','k-email','k-transporteur'].forEach(id=>document.getElementById(id).value='');
   vulKlantSelects();toonKlanten();
 }
-function bewerkKlant(naam){const k=klanten.find(x=>x.naam===naam);if(!k)return;bewerkKlantNaam=naam;document.getElementById('k-naam').value=k.naam;document.getElementById('k-adres').value=k.adres||'';document.getElementById('k-woonplaats').value=k.woonplaats||'';document.getElementById('k-telefoon').value=k.telefoon||'';document.getElementById('k-email').value=k.email||'';document.getElementById('k-transporteur').value=k.transporteur||'';document.querySelector('#tab-klanten button').textContent='&#128190; Wijziging opslaan';document.getElementById('k-naam').scrollIntoView({behavior:'smooth'});}
+function bewerkKlant(naam){const k=klanten.find(x=>x.naam===naam);if(!k)return;bewerkKlantNaam=naam;document.getElementById('k-naam').value=k.naam;document.getElementById('k-adres').value=k.adres||'';document.getElementById('k-woonplaats').value=k.woonplaats||'';document.getElementById('k-telefoon').value=k.telefoon||'';document.getElementById('k-email').value=k.email||'';document.getElementById('k-transporteur').value=k.transporteur||'';document.querySelector('#tab-klanten button').textContent='💾 Wijziging opslaan';document.getElementById('k-naam').scrollIntoView({behavior:'smooth'});}
 function verwijderKlant(naam){if(!confirm('Klant "'+naam+'" verwijderen?'))return;klanten=klanten.filter(k=>k.naam!==naam);if(window.fbDeleteKlant)window.fbDeleteKlant(naam);vulKlantSelects();toonKlanten();}
 function toonKlanten(){
   const s=[...klanten].sort((a,b)=>a.naam.localeCompare(b.naam,'nl'));
-  document.getElementById('k-lijst').innerHTML=s.map(k=>'<div class="card" style="padding:8px 10px;display:flex;align-items:center;gap:8px;"><div style="flex:1;min-width:0;overflow:hidden;"><b>'+k.naam+'</b> <span class="badge">'+(k.woonplaats||'')+'</span><div class="small" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+(k.email||'')+' '+(k.telefoon||'')+'</div></div><div style="display:flex;gap:4px;flex-shrink:0;"><button class="secondary" style="padding:6px 8px;" onclick="bewerkKlant(''+k.naam+'')">&#9999;&#65039;</button><button class="danger" style="padding:6px 8px;" onclick="verwijderKlant(''+k.naam+'')">&#128465;&#65039;</button></div></div>').join('')||'<div class="small">Nog geen klanten.</div>';
+  document.getElementById('k-lijst').innerHTML=s.map(k=>'<div class="card" style="padding:8px 10px;display:flex;align-items:center;gap:8px;"><div style="flex:1;min-width:0;overflow:hidden;"><b>'+k.naam+'</b> <span class="badge">'+(k.woonplaats||'')+'</span><div class="small" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+(k.email||'')+' '+(k.telefoon||'')+'</div></div><div style="display:flex;gap:4px;flex-shrink:0;"><button class="secondary" style="padding:6px 8px;" onclick="bewerkKlant(''+k.naam+'')">✏️</button><button class="danger" style="padding:6px 8px;" onclick="verwijderKlant(''+k.naam+'')">🗑️</button></div></div>').join('')||'<div class="small">Nog geen klanten.</div>';
 }
 // Backup
 function exportBackup(){const d={klanten,invoer,verzonden:laad('cc_verzonden'),email_instellingen:laad('cc_email_cfg')};const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(d,null,2)],{type:'application/json'}));a.download='CC_Beheer_backup_'+new Date().toISOString().slice(0,10)+'.json';a.click();}
 function importBackup(ev){const file=ev.target.files[0];if(!file)return;const r=new FileReader();r.onload=async function(e){try{const d=JSON.parse(e.target.result);if(!confirm('Gegevens overschrijven met backup?'))return;if(d.klanten){klanten=d.klanten;}if(d.invoer){invoer=d.invoer;}if(d.verzonden)bewaar('cc_verzonden',d.verzonden);if(d.email_instellingen)bewaar('cc_email_cfg',d.email_instellingen);vulKlantSelects();toonLaatsteInvoer();toonOverzicht();toonVerzendlijst();if(d.klanten)for(const k of d.klanten){if(window.fbSaveKlant)await window.fbSaveKlant(k);}if(d.invoer)for(const x of d.invoer){if(window.fbSaveInvoer)await window.fbSaveInvoer(x);}alert('Backup geladen en naar cloud gestuurd.');}catch(err){alert('Ongeldig bestand: '+err);}};r.readAsText(file);}
+// Maak bewaar beschikbaar voor Firebase module
+window.bewaar=bewaar;
 // Init
 vulKlantSelects();
 toonLaatsteInvoer();
@@ -338,8 +339,8 @@ const app=initializeApp(cfg);const db=getFirestore(app);
 function veiligId(s){return String(s).toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/g,'')||'item';}
 onSnapshot(collection(db,'klanten'),snap=>{window.klanten=snap.docs.map(d=>d.data());window.vulKlantSelects?.();window.toonKlanten?.();window.toonOverzicht?.();});
 onSnapshot(collection(db,'invoer'),snap=>{window.invoer=snap.docs.map(d=>d.data());window.toonLaatsteInvoer?.();window.toonOverzicht?.();});
-onSnapshot(collection(db,'verzonden'),snap=>{bewaar('cc_verzonden',snap.docs.map(d=>d.data()));window.toonVerzendlijst?.();});
-onSnapshot(collection(db,'config'),snap=>{const m=snap.docs.find(d=>d.id==='main');if(m){bewaar('cc_email_cfg',m.data());window.vulEmailConfigVelden?.();}});
+onSnapshot(collection(db,'verzonden'),snap=>{window.bewaar('cc_verzonden',snap.docs.map(d=>d.data()));window.toonVerzendlijst?.();});
+onSnapshot(collection(db,'config'),snap=>{const m=snap.docs.find(d=>d.id==='main');if(m){window.bewaar('cc_email_cfg',m.data());window.vulEmailConfigVelden?.();}});
 window.fbSaveKlant=(k)=>setDoc(doc(db,'klanten',veiligId(k.naam)),k);
 window.fbDeleteKlant=(naam)=>deleteDoc(doc(db,'klanten',veiligId(naam)));
 window.fbSaveInvoer=(r)=>setDoc(doc(db,'invoer',String(r.id)),r);
