@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<title>CC Herstel v2</title>
+<style>
+  body{font-family:Arial,sans-serif;padding:20px;max-width:600px;margin:0 auto;}
+  button{padding:12px 20px;font-size:16px;background:#4f8cff;color:#fff;border:none;border-radius:8px;cursor:pointer;margin:10px 0;display:block;width:100%;}
+  .status{padding:12px;background:#f0f4ff;border-radius:8px;margin:10px 0;font-size:14px;}
+  .success{background:#c8e6c9;}
+  .error{background:#ffcdd2;}
+  input[type=file]{margin:10px 0;font-size:14px;}
+</style>
+</head>
+<body>
+<h2>🔧 CC Beheer Herstel v2</h2>
+<p>Laad een backup-bestand en stuur die naar Firebase.</p>
+
+<input type="file" id="bestand" accept=".json">
+<button onclick="laadEnStuur()">⬆️ Backup naar Firebase sturen</button>
+<div class="status" id="status">Kies een backup-bestand...</div>
+
+<script type="module">
+import{initializeApp}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import{getFirestore,collection,doc,setDoc,deleteDoc,getDocs}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const firebaseConfig={
+  apiKey:"AIzaSyDcIlmELWAClhg-6aOHCs-QsgxBJTkP8UQ",
+  authDomain:"cc-beheer.firebaseapp.com",
+  projectId:"cc-beheer",
+  storageBucket:"cc-beheer.firebasestorage.app",
+  messagingSenderId:"835121705327",
+  appId:"1:835121705327:web:f4f7fabf36d868809b389a"
+};
+
+const app=initializeApp(firebaseConfig);
+const db=getFirestore(app);
+
+function veiligId(s){return String(s).toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/g,'')||'item';}
+
+function status(tekst, type){
+  const el=document.getElementById('status');
+  el.textContent=tekst;
+  el.className='status'+(type?' '+type:'');
+}
+
+window.laadEnStuur = async function(){
+  const file=document.getElementById('bestand').files[0];
+  if(!file){status('Kies eerst een bestand!');return;}
+  
+  try{
+    status('⏳ Bestand lezen...');
+    const tekst=await file.text();
+    const data=JSON.parse(tekst);
+    
+    if(!data.klanten||!data.invoer){
+      status('❌ Ongeldig backup-bestand - klanten of invoer ontbreekt','error');
+      return;
+    }
+    
+    status(`⏳ ${data.klanten.length} klanten en ${data.invoer.length} invoerregels gevonden. Bezig met uploaden...`);
+    
+    // Klanten uploaden
+    let teller=0;
+    for(const k of data.klanten){
+      await setDoc(doc(db,'klanten',veiligId(k.naam)),k);
+      teller++;
+      if(teller%5===0) status(`⏳ Klanten: ${teller}/${data.klanten.length}...`);
+    }
+    
+    // Invoer uploaden
+    teller=0;
+    for(const r of data.invoer){
+      await setDoc(doc(db,'invoer',String(r.id)),r);
+      teller++;
+      if(teller%10===0) status(`⏳ Invoer: ${teller}/${data.invoer.length}...`);
+    }
+    
+    // Verzonden uploaden
+    if(data.verzonden){
+      for(const v of data.verzonden){
+        await setDoc(doc(db,'verzonden',String(v.id)),v);
+      }
+    }
+    
+    status(`✅ Klaar! ${data.klanten.length} klanten en ${data.invoer.length} regels naar Firebase gestuurd. Je kunt nu de CC Beheer app openen.`,'success');
+    
+  }catch(err){
+    status('❌ Fout: '+err.message,'error');
+    console.error(err);
+  }
+};
+</script>
+</body>
+</html>
