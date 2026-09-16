@@ -314,7 +314,18 @@ function bewerkKlant(naam){const k=klanten.find(x=>x.naam===naam);if(!k)return;b
 function verwijderKlant(naam){if(!confirm('Klant "'+naam+'" verwijderen?'))return;klanten=klanten.filter(k=>k.naam!==naam);if(window.fbDeleteKlant)window.fbDeleteKlant(naam);vulKlantSelects();toonKlanten();}
 function toonKlanten(){
   const s=[...klanten].sort((a,b)=>a.naam.localeCompare(b.naam,'nl'));
-  document.getElementById('k-lijst').innerHTML=s.map(k=>'<div class="card" style="padding:8px 10px;display:flex;align-items:center;gap:8px;"><div style="flex:1;min-width:0;overflow:hidden;"><b>'+k.naam+'</b> <span class="badge">'+(k.woonplaats||'')+'</span><div class="small" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+(k.email||'')+' '+(k.telefoon||'')+'</div></div><div style="display:flex;gap:4px;flex-shrink:0;"><button class="secondary" style="padding:6px 8px;" onclick="bewerkKlant(''+k.naam+'')">✏️</button><button class="danger" style="padding:6px 8px;" onclick="verwijderKlant(''+k.naam+'')">🗑️</button></div></div>').join('')||'<div class="small">Nog geen klanten.</div>';
+  const el=document.getElementById('k-lijst');
+  if(!s.length){el.innerHTML='<div class="small">Nog geen klanten.</div>';return;}
+  el.innerHTML='';
+  s.forEach(k=>{
+    const div=document.createElement('div');
+    div.className='card';
+    div.style='padding:8px 10px;display:flex;align-items:center;gap:8px;';
+    div.innerHTML='<div style="flex:1;min-width:0;overflow:hidden;"><b>'+k.naam+'</b> <span class="badge">'+(k.woonplaats||'')+'</span><div class="small" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+(k.email||'')+' '+(k.telefoon||'')+'</div></div><div style="display:flex;gap:4px;flex-shrink:0;"><button class="secondary bewerk-klant" style="padding:6px 8px;" data-naam="'+k.naam.replace(/"/g,'&quot;')+'">\u270f\ufe0f</button><button class="danger verw-klant" style="padding:6px 8px;" data-naam="'+k.naam.replace(/"/g,'&quot;')+'">\U0001F5D1\ufe0f</button></div>';
+    el.appendChild(div);
+  });
+  el.querySelectorAll('.bewerk-klant').forEach(b=>b.onclick=()=>bewerkKlant(b.dataset.naam));
+  el.querySelectorAll('.verw-klant').forEach(b=>b.onclick=()=>verwijderKlant(b.dataset.naam));
 }
 // Backup
 function exportBackup(){const d={klanten,invoer,verzonden:laad('cc_verzonden'),email_instellingen:laad('cc_email_cfg')};const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(d,null,2)],{type:'application/json'}));a.download='CC_Beheer_backup_'+new Date().toISOString().slice(0,10)+'.json';a.click();}
@@ -333,8 +344,8 @@ const app=initializeApp(cfg);const db=getFirestore(app);
 function veiligId(s){return String(s).toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/g,'')||'item';}
 onSnapshot(collection(db,'klanten'),snap=>{window.klanten=snap.docs.map(d=>d.data());window.vulKlantSelects?.();window.toonKlanten?.();window.toonOverzicht?.();});
 onSnapshot(collection(db,'invoer'),snap=>{window.invoer=snap.docs.map(d=>d.data());window.toonLaatsteInvoer?.();window.toonOverzicht?.();});
-onSnapshot(collection(db,'verzonden'),snap=>{window.bewaar('cc_verzonden',snap.docs.map(d=>d.data()));window.toonVerzendlijst?.();});
-onSnapshot(collection(db,'config'),snap=>{const m=snap.docs.find(d=>d.id==='main');if(m){window.bewaar('cc_email_cfg',m.data());window.vulEmailConfigVelden?.();}});
+onSnapshot(collection(db,'verzonden'),snap=>{const b=window.bewaar||function(k,d){localStorage.setItem(k,JSON.stringify(d));};b('cc_verzonden',snap.docs.map(d=>d.data()));window.toonVerzendlijst?.();});
+onSnapshot(collection(db,'config'),snap=>{const m=snap.docs.find(d=>d.id==='main');if(m){const b=window.bewaar||function(k,d){localStorage.setItem(k,JSON.stringify(d));};b('cc_email_cfg',m.data());window.vulEmailConfigVelden?.();}});
 window.fbSaveKlant=(k)=>setDoc(doc(db,'klanten',veiligId(k.naam)),k);
 window.fbDeleteKlant=(naam)=>deleteDoc(doc(db,'klanten',veiligId(naam)));
 window.fbSaveInvoer=(r)=>setDoc(doc(db,'invoer',String(r.id)),r);
