@@ -55,7 +55,7 @@
 <body>
 <header>
   <div style="display:flex;justify-content:space-between;align-items:center;">
-    <h1>&#128230; CC Beheer 2026 <span style="font-size:11px;color:var(--muted);font-weight:400;">v1.5</span></h1>
+    <h1>&#128230; CC Beheer 2026 <span style="font-size:11px;color:var(--muted);font-weight:400;">v1.8</span></h1>
     <div style="display:flex;align-items:center;gap:8px;">
       <span id="sync-indicator" class="small"></span>
       <button class="secondary" style="margin:0;padding:6px 10px;" onclick="toggleThema()">&#127769;/&#9728;&#65039;</button>
@@ -227,8 +227,10 @@ function laadVanCloud(){
         klanten = p.klanten || [];
         invoer = p.invoer || [];
         if(p.verzonden) bewaar('cc_verzonden', p.verzonden);
+        const huidigKlant=document.getElementById('o-klant').value;
         vulKlantSelects();
         toonLaatsteInvoer();
+        if(huidigKlant)document.getElementById('o-klant').value=huidigKlant;
         toonOverzicht();
         toonVerzendlijst();
         toonSyncIndicator('☁️');
@@ -260,7 +262,8 @@ function exportTotaalPdf(){const{jsPDF}=window.jspdf;const doc=new jsPDF({unit:'
 function pdfKleurCel(doc,val,x,y,w,h){if(val>0)doc.setFillColor(200,230,201);else if(val<0)doc.setFillColor(255,205,210);else return;doc.rect(x,y,w,h,'F');}
 function genereerMailHtml(klant){
   const k=klanten.find(x=>x.naam===klant)||{};
-  let rows=invoer.filter(r=>r.klant===klant).map(r=>({...r}));
+  const huidigJaar=new Date().getFullYear();
+  let rows=invoer.filter(r=>r.klant===klant&&new Date(r.datum).getFullYear()>=huidigJaar-1).map(r=>({...r}));
   rows.sort((a,b)=>{const sA=(Math.abs(a.cc)>0||Math.abs(a.platen)>0),sB=(Math.abs(b.cc)>0||Math.abs(b.platen)>0);if(sA&&!sB)return -1;if(!sA&&sB)return 1;return new Date(b.datum)-new Date(a.datum);});
   let tcc=0,tpl=0,top=0;
   rows.forEach(r=>{tcc+=r.cc;tpl+=r.platen;top+=r.opzet;});
@@ -297,7 +300,7 @@ function laadEmailConfig(){
 function opslaanEmailConfig(){const cfg={url:document.getElementById('cfg-url').value.trim()};bewaar('cc_email_cfg',cfg);gasSync();document.getElementById('cfg-status').textContent='✓️ Opgeslagen.';}
 function vulEmailConfigVelden(){const cfg=laadEmailConfig();if(cfg.url)document.getElementById('cfg-url').value=cfg.url;}
 function exportBackup(){const data={klanten:laad('cc_klanten'),invoer:laad('cc_invoer'),verzonden:laad('cc_verzonden'),email_instellingen:laad('cc_email_cfg')};const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='CC_Beheer_backup_'+new Date().toISOString().slice(0,10)+'.json';a.click();}
-function importBackup(ev){const file=ev.target.files[0];if(!file)return;const reader=new FileReader();reader.onload=async function(e){try{const data=JSON.parse(e.target.result);if(!confirm('Huidige gegevens overschrijven met de backup?'))return;if(data.klanten){bewaar('cc_klanten',data.klanten);klanten=data.klanten;}if(data.invoer){bewaar('cc_invoer',data.invoer);invoer=data.invoer;}if(data.verzonden)bewaar('cc_verzonden',data.verzonden);if(data.email_instellingen)bewaar('cc_email_cfg',data.email_instellingen);vulKlantSelects();toonLaatsteInvoer();toonOverzicht();toonVerzendlijst();gasSync();alert('✅ Backup geladen! Data wordt naar cloud gesynchroniseerd.');}catch(err){alert('❌ Ongeldig backup-bestand: '+err);}};reader.readAsText(file);}
+function importBackup(ev){const file=ev.target.files[0];if(!file)return;const reader=new FileReader();reader.onload=async function(e){try{const data=JSON.parse(e.target.result);if(!confirm('Huidige gegevens overschrijven met de backup?'))return;if(data.klanten){klanten=data.klanten;bewaar('cc_klanten',klanten);}if(data.invoer){invoer=data.invoer;bewaar('cc_invoer',invoer);}if(data.verzonden)bewaar('cc_verzonden',data.verzonden);if(data.email_instellingen)bewaar('cc_email_cfg',data.email_instellingen);vulKlantSelects();toonLaatsteInvoer();toonOverzicht();toonVerzendlijst();_doSync();alert('✅ Backup geladen! Data wordt naar cloud gesynchroniseerd.');}catch(err){alert('❌ Fout: '+err);}};reader.readAsText(file);}
 let bewerkKlantNaam=null;
 function opslaanKlant(){const naam=document.getElementById('k-naam').value.trim();if(!naam){document.getElementById('k-status').textContent='❌ Naam verplicht.';return;}const data={naam,adres:document.getElementById('k-adres').value.trim(),woonplaats:document.getElementById('k-woonplaats').value.trim(),telefoon:document.getElementById('k-telefoon').value.trim(),email:document.getElementById('k-email').value.trim(),transporteur:document.getElementById('k-transporteur').value.trim()};if(bewerkKlantNaam){const idx=klanten.findIndex(k=>k.naam===bewerkKlantNaam);if(idx>-1)klanten[idx]=data;if(bewerkKlantNaam!==naam){invoer.forEach(r=>{if(r.klant===bewerkKlantNaam){r.klant=naam;}});bewaarEnSync('cc_invoer',invoer);}document.getElementById('k-status').textContent='✓️ Gewijzigd.';bewerkKlantNaam=null;document.querySelector('#tab-klanten button').textContent='➕ Klant toevoegen';}else{klanten.push(data);document.getElementById('k-status').textContent='✓️ Toegevoegd.';}bewaarEnSync('cc_klanten',klanten);gasSync();['k-naam','k-adres','k-woonplaats','k-telefoon','k-email','k-transporteur'].forEach(id=>document.getElementById(id).value='');vulKlantSelects();toonKlanten();}
 function bewerkKlant(naam){const k=klanten.find(x=>x.naam===naam);if(!k)return;bewerkKlantNaam=naam;document.getElementById('k-naam').value=k.naam;document.getElementById('k-adres').value=k.adres||'';document.getElementById('k-woonplaats').value=k.woonplaats||'';document.getElementById('k-telefoon').value=k.telefoon||'';document.getElementById('k-email').value=k.email||'';document.getElementById('k-transporteur').value=k.transporteur||'';document.querySelector('#tab-klanten button').textContent='💾 Wijziging opslaan';document.getElementById('k-naam').scrollIntoView({behavior:'smooth'});}
