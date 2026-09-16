@@ -147,6 +147,7 @@ var invoer=[];
 // Helpers
 function laad(k){try{return JSON.parse(localStorage.getItem(k))||[];}catch(e){return[];}}
 function bewaar(k,d){localStorage.setItem(k,JSON.stringify(d));}
+window.bewaar=bewaar;
 function fmtDatum(iso){return new Date(iso).toLocaleDateString('nl-NL',{day:'2-digit',month:'2-digit',year:'numeric'});}
 function getISOWeek(date){const d=new Date(date);d.setHours(0,0,0,0);d.setDate(d.getDate()+4-(d.getDay()||7));const y=new Date(d.getFullYear(),0,1);return Math.ceil((((d-y)/86400000)+1)/7);}
 function kleurCel(v){if(v>0)return'background:#c8e6c9;';if(v<0)return'background:#ffcdd2;';return'';}
@@ -286,12 +287,7 @@ function genereerMailHtml(klant){
 function mailOverzicht(){
   const klant=document.getElementById('o-klant').value;if(!klant||klant==='__totaal__'){alert('Kies eerst een klant.');return;}
   const k=klanten.find(x=>x.naam===klant)||{};if(!k.email){alert('Geen e-mailadres bekend.');return;}
-  const cfg=laadEmailConfig();const onderwerp='Fustoverzicht - '+klant;const tekst='Mijnheer, Mevrouw,
-
-Hierbij het actuele overzicht van de cc-administratie.
-
-Met vriendelijke groet,
-Arno Vollebregt';
+  const cfg=laadEmailConfig();const onderwerp='Fustoverzicht - '+klant;const tekst='Mijnheer, Mevrouw,\n\nHierbij het actuele overzicht van de cc-administratie.\n\nMet vriendelijke groet,\nArno Vollebregt';
   const status=document.getElementById('o-status');if(!cfg.url){window.location.href='mailto:'+k.email+'?subject='+encodeURIComponent(onderwerp)+'&body='+encodeURIComponent(tekst);return;}
   if(status)status.textContent='Versturen...';
   fetch(cfg.url,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({to_email:k.email,onderwerp,bericht:tekst,html_bericht:genereerMailHtml(klant)})}).then(r=>r.json()).then(j=>{if(status)status.textContent=j.ok?'Verzonden naar '+k.email:'Mislukt: '+j.error;if(j.ok)logVerzending(klant,k.email);}).catch(()=>{if(status)status.textContent='Verbindingsfout.';});
@@ -323,8 +319,6 @@ function toonKlanten(){
 // Backup
 function exportBackup(){const d={klanten,invoer,verzonden:laad('cc_verzonden'),email_instellingen:laad('cc_email_cfg')};const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(d,null,2)],{type:'application/json'}));a.download='CC_Beheer_backup_'+new Date().toISOString().slice(0,10)+'.json';a.click();}
 function importBackup(ev){const file=ev.target.files[0];if(!file)return;const r=new FileReader();r.onload=async function(e){try{const d=JSON.parse(e.target.result);if(!confirm('Gegevens overschrijven met backup?'))return;if(d.klanten){klanten=d.klanten;}if(d.invoer){invoer=d.invoer;}if(d.verzonden)bewaar('cc_verzonden',d.verzonden);if(d.email_instellingen)bewaar('cc_email_cfg',d.email_instellingen);vulKlantSelects();toonLaatsteInvoer();toonOverzicht();toonVerzendlijst();if(d.klanten)for(const k of d.klanten){if(window.fbSaveKlant)await window.fbSaveKlant(k);}if(d.invoer)for(const x of d.invoer){if(window.fbSaveInvoer)await window.fbSaveInvoer(x);}alert('Backup geladen en naar cloud gestuurd.');}catch(err){alert('Ongeldig bestand: '+err);}};r.readAsText(file);}
-// Maak bewaar beschikbaar voor Firebase module
-window.bewaar=bewaar;
 // Init
 vulKlantSelects();
 toonLaatsteInvoer();
