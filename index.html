@@ -282,7 +282,26 @@ function genereerMailHtml(klant){
   let tc=0,tp=0,to=0;rows.forEach(r=>{tc+=r.cc;tp+=r.platen;to+=r.opzet;});
   function kl(v){if(v>0)return'background:#c8e6c9;text-align:center;padding:4px 8px;';if(v<0)return'background:#ffcdd2;text-align:center;padding:4px 8px;';return'text-align:center;padding:4px 8px;';}
   const rijen=rows.map(r=>'<tr style="border-bottom:1px solid #ddd;"><td style="padding:4px 8px;">'+fmtDatum(r.datum)+'</td><td style="padding:4px 8px;">'+(r.week||'')+'</td><td style="padding:4px 8px;">'+(r.id?String(r.id).slice(-5):'')+'</td><td style="'+kl(r.cc)+'">'+(r.cc||'')+'</td><td style="'+kl(r.platen)+'">'+(r.platen||'')+'</td><td style="'+kl(r.opzet)+'">'+(r.opzet||'')+'</td><td style="padding:4px 8px;">'+(r.bon||'')+'</td><td style="padding:4px 8px;">'+(r.opmerking||r.transporteur||'')+'</td></tr>').join('');
-  return '<!DOCTYPE html><html><body style="font-family:Arial,sans-serif;font-size:13px;color:#222;"><table style="width:100%;border-bottom:2px solid #333;margin-bottom:12px;"><tr><td><strong>P.J.J.Vollebregt BV</strong><br>Legmeerdijk 207, Aalsmeer<br>youngplantsvollebregt@gmail.com | 06 15001022</td><td style="text-align:right;">Datum: '+new Date().toLocaleDateString('nl-NL')+'<br>Groen = ons tegoed | Rood = uw tegoed</td></tr></table><p><strong>'+klant+'</strong><br>'+(k.woonplaats||'')+'<br>'+(k.email||'')+'<br><em>Saldo overboeken naar FH nr: 2881</em></p><table style="width:100%;border-collapse:collapse;font-size:12px;"><thead><tr style="background:#ddd;"><td style="padding:5px 8px;">Datum</td><td style="padding:5px 8px;">Wk</td><td style="padding:5px 8px;">ID</td><td style="padding:5px 8px;text-align:center;">CC</td><td style="padding:5px 8px;text-align:center;">Platen</td><td style="padding:5px 8px;text-align:center;">Opzet</td><td style="padding:5px 8px;text-align:center;">Bon</td><td style="padding:5px 8px;">Opm.</td></tr><tr style="background:#c8e6c9;font-weight:bold;"><td colspan="3" style="padding:5px 8px;">Huidig Saldo</td><td style="'+kl(tc)+'">'+tc+'</td><td style="'+kl(tp)+'">'+tp+'</td><td style="'+kl(to)+'">'+to+'</td><td colspan="2"></td></tr></thead><tbody>'+rijen+'</tbody></table><br><p style="font-size:11px;color:#666;">Wilt u er voor zorgdragen dat het saldo binnen 5 werkdagen retour gebracht wordt of overgeboekt naar ons FH nummer: 2881. Na 5 werkdagen kunnen we kosten in rekening brengen. Positief is ons tegoed, negatief is uw tegoed.</p><p>Mijnheer, Mevrouw,<br><br>Hierbij het actuele overzicht van de cc-administratie.<br><br>Met vriendelijke groet,<br>Arno Vollebregt</p></body></html>';
+  return '<!DOCTYPE html><html><body style="font-family:Arial,sans-serif;font-size:13px;color:#222;background:#f5f5f5;"><table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center"><table width="640" cellpadding="0" cellspacing="0" style="background:#ffffff;padding:20px;">'+
+    '<table style="width:100%;border-bottom:2px solid #333;margin-bottom:12px;">'+
+    '<tr><td><strong>P.J.J.Vollebregt BV</strong><br>Legmeerdijk 207, Aalsmeer<br>youngplantsvollebregt@gmail.com | 06 15001022</td>'+
+    '<td style="text-align:right;white-space:nowrap;">Datum: '+new Date().toLocaleDateString('nl-NL')+'<br>Groen = ons tegoed<br>Rood = uw tegoed</td></tr></table>'+
+    '<p><strong>'+klant+'</strong><br>'+(k.woonplaats||'')+'<br>'+(k.email||'')+'<br><em>Saldo overboeken naar FH nr: 2881</em></p>'+
+    '<table style="width:100%;border-collapse:collapse;font-size:12px;table-layout:fixed;">'+
+    '<colgroup><col style="width:16%"><col style="width:8%"><col style="width:8%"><col style="width:10%"><col style="width:10%"><col style="width:10%"><col style="width:8%"><col style="width:30%"></colgroup>'+
+    '<thead><tr style="background:#ddd;">'+
+    '<td style="padding:5px 4px;">Datum</td><td style="padding:5px 4px;">Wk</td><td style="padding:5px 4px;">ID</td>'+
+    '<td style="padding:5px 4px;text-align:center;">CC</td><td style="padding:5px 4px;text-align:center;">Platen</td>'+
+    '<td style="padding:5px 4px;text-align:center;">Opzet</td><td style="padding:5px 4px;text-align:center;">Bon</td>'+
+    '<td style="padding:5px 4px;">Opm.</td></tr>'+
+    '<tr style="background:#c8e6c9;font-weight:bold;">'+
+    '<td colspan="3" style="padding:5px 4px;">Huidig Saldo</td>'+
+    '<td style="'+kl(tc)+'">'+tc+'</td><td style="'+kl(tp)+'">'+tp+'</td><td style="'+kl(to)+'">'+to+'</td>'+
+    '<td colspan="2"></td></tr></thead>'+
+    '<tbody>'+rijen+'</tbody></table>'+
+    '<br><p style="font-size:11px;color:#666;">Wilt u er voor zorgdragen dat het saldo binnen 5 werkdagen retour gebracht wordt of overgeboekt naar ons FH nummer: 2881. Na 5 werkdagen kunnen we kosten in rekening brengen. Positief is ons tegoed, negatief is uw tegoed.</p>'+
+    '<p>Mijnheer, Mevrouw,<br><br>Hierbij het actuele overzicht van de cc-administratie.<br><br>Met vriendelijke groet,<br>Arno Vollebregt</p>'+
+    '</table></td></tr></table></body></html>';
 }
 function mailOverzicht(){
   const klant=document.getElementById('o-klant').value;if(!klant||klant==='__totaal__'){alert('Kies eerst een klant.');return;}
