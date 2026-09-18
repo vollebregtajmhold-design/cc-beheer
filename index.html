@@ -141,9 +141,9 @@ const LOGO_BASE64="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/4gHYSUNDX1
 let thema=localStorage.getItem('cc_thema')||'light';
 document.documentElement.setAttribute('data-theme',thema);
 function toggleThema(){thema=thema==='light'?'dark':'light';document.documentElement.setAttribute('data-theme',thema);localStorage.setItem('cc_thema',thema);}
-// Data variabelen - gevuld door Firebase
-var klanten=[];
-var invoer=[];
+// Data variabelen - gevuld door Firebase, met lokale cache als terugvalpositie
+var klanten=laad('cc_klanten_cache');
+var invoer=laad('cc_invoer_cache');
 // Helpers
 function laad(k){try{return JSON.parse(localStorage.getItem(k))||[];}catch(e){return[];}}
 function bewaar(k,d){localStorage.setItem(k,JSON.stringify(d));}
@@ -282,7 +282,7 @@ function genereerMailHtml(klant){
   let tc=0,tp=0,to=0;rows.forEach(r=>{tc+=r.cc;tp+=r.platen;to+=r.opzet;});
   function kl(v){if(v>0)return'background:#c8e6c9;text-align:center;padding:4px 8px;';if(v<0)return'background:#ffcdd2;text-align:center;padding:4px 8px;';return'text-align:center;padding:4px 8px;';}
   const rijen=rows.map(r=>'<tr style="border-bottom:1px solid #ddd;"><td style="padding:4px 8px;">'+fmtDatum(r.datum)+'</td><td style="padding:4px 8px;">'+(r.week||'')+'</td><td style="padding:4px 8px;">'+(r.id?String(r.id).slice(-5):'')+'</td><td style="'+kl(r.cc)+'">'+(r.cc||'')+'</td><td style="'+kl(r.platen)+'">'+(r.platen||'')+'</td><td style="'+kl(r.opzet)+'">'+(r.opzet||'')+'</td><td style="padding:4px 8px;">'+(r.bon||'')+'</td><td style="padding:4px 8px;">'+(r.opmerking||r.transporteur||'')+'</td></tr>').join('');
-  return '<!DOCTYPE html><html><body style="font-family:Arial,sans-serif;font-size:13px;color:#222;background:#f5f5f5;"><table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center"><table width="640" cellpadding="0" cellspacing="0" style="background:#ffffff;padding:20px;">'+
+  return '<!DOCTYPE html><html><body style="font-family:Arial,sans-serif;font-size:13px;color:#222;background:#f5f5f5;margin:0;padding:0;"><table width="100%" cellpadding="0" cellspacing="0"><tr><td align="left"><table width="640" cellpadding="0" cellspacing="0" style="background:#ffffff;padding:20px;">'+
     '<table style="width:100%;border-bottom:2px solid #333;margin-bottom:12px;">'+
     '<tr><td><strong>P.J.J.Vollebregt BV</strong><br>Legmeerdijk 207, Aalsmeer<br>youngplantsvollebregt@gmail.com | 06 15001022</td>'+
     '<td style="text-align:right;white-space:nowrap;">Datum: '+new Date().toLocaleDateString('nl-NL')+'<br>Groen = ons tegoed<br>Rood = uw tegoed</td></tr></table>'+
@@ -361,10 +361,19 @@ import{getFirestore,collection,doc,setDoc,deleteDoc,onSnapshot,getDocs}from"http
 const cfg={apiKey:"AIzaSyDcIlmELWAClhg-6aOHCs-QsgxBJTkP8UQ",authDomain:"cc-beheer.firebaseapp.com",projectId:"cc-beheer",storageBucket:"cc-beheer.firebasestorage.app",messagingSenderId:"835121705327",appId:"1:835121705327:web:f4f7fabf36d868809b389a"};
 const app=initializeApp(cfg);const db=getFirestore(app);
 function veiligId(s){return String(s).toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/g,'')||'item';}
-onSnapshot(collection(db,'klanten'),snap=>{window.klanten=snap.docs.map(d=>d.data());window.vulKlantSelects?.();window.toonKlanten?.();window.toonOverzicht?.();});
-onSnapshot(collection(db,'invoer'),snap=>{window.invoer=snap.docs.map(d=>d.data());window.toonLaatsteInvoer?.();window.toonOverzicht?.();});
-onSnapshot(collection(db,'verzonden'),snap=>{const b=window.bewaar||function(k,d){localStorage.setItem(k,JSON.stringify(d));};b('cc_verzonden',snap.docs.map(d=>d.data()));window.toonVerzendlijst?.();});
-onSnapshot(collection(db,'config'),snap=>{const m=snap.docs.find(d=>d.id==='main');if(m){const b=window.bewaar||function(k,d){localStorage.setItem(k,JSON.stringify(d));};b('cc_email_cfg',m.data());window.vulEmailConfigVelden?.();}});
+window.toonSyncIndicator?.('🔄');
+onSnapshot(collection(db,'klanten'),
+  snap=>{window.klanten=snap.docs.map(d=>d.data());window.bewaar?.('cc_klanten_cache',window.klanten);window.vulKlantSelects?.();window.toonKlanten?.();window.toonOverzicht?.();window.toonSyncIndicator?.('☁️');},
+  err=>{console.error('Firestore klanten fout:',err);window.toonSyncIndicator?.('⚠️ geen verbinding');});
+onSnapshot(collection(db,'invoer'),
+  snap=>{window.invoer=snap.docs.map(d=>d.data());window.bewaar?.('cc_invoer_cache',window.invoer);window.toonLaatsteInvoer?.();window.toonOverzicht?.();window.toonSyncIndicator?.('☁️');},
+  err=>{console.error('Firestore invoer fout:',err);window.toonSyncIndicator?.('⚠️ geen verbinding');});
+onSnapshot(collection(db,'verzonden'),
+  snap=>{const b=window.bewaar||function(k,d){localStorage.setItem(k,JSON.stringify(d));};b('cc_verzonden',snap.docs.map(d=>d.data()));window.toonVerzendlijst?.();},
+  err=>{console.error('Firestore verzonden fout:',err);window.toonSyncIndicator?.('⚠️ geen verbinding');});
+onSnapshot(collection(db,'config'),
+  snap=>{const m=snap.docs.find(d=>d.id==='main');if(m){const b=window.bewaar||function(k,d){localStorage.setItem(k,JSON.stringify(d));};b('cc_email_cfg',m.data());window.vulEmailConfigVelden?.();}},
+  err=>{console.error('Firestore config fout:',err);});
 window.fbSaveKlant=(k)=>setDoc(doc(db,'klanten',veiligId(k.naam)),k);
 window.fbDeleteKlant=(naam)=>deleteDoc(doc(db,'klanten',veiligId(naam)));
 window.fbSaveInvoer=(r)=>setDoc(doc(db,'invoer',String(r.id)),r);
